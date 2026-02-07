@@ -302,7 +302,7 @@ function renderDays(year, month) {
     const totalCells = calendarElement.children.length - 7;
     const remainingCells = 35 - totalCells;
     
-    for (let day = 1; day <= remainingCells; {
+    for (let day = 1; day <= remainingCells; day++) {
         renderDayCell(year, month + 1, day, true);
     }
 }
