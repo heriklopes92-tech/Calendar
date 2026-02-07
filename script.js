@@ -8,6 +8,9 @@ let currentDate = new Date();
 // Armazena os dados do calendário em memória
 let calendarData = {};
 
+// ID único do usuário (gerado na primeira vez)
+let userId = null;
+
 // Referências aos elementos DOM
 const calendarElement = document.getElementById('calendar');
 const currentMonthElement = document.getElementById('currentMonth');
@@ -23,6 +26,23 @@ const loadingOverlay = document.getElementById('loadingOverlay');
 
 // Variável para armazenar o dia selecionado
 let selectedDay = null;
+
+// ============================================
+// FUNÇÕES DE IDENTIFICAÇÃO DO USUÁRIO
+// ============================================
+
+/**
+ * Obtém ou cria um ID único para o usuário
+ */
+function getUserId() {
+    let id = localStorage.getItem('user-id');
+    if (!id) {
+        // Gera um ID único baseado em timestamp e random
+        id = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('user-id', id);
+    }
+    return id;
+}
 
 // ============================================
 // FUNÇÕES DE ARMAZENAMENTO (LOCALSTORAGE)
@@ -99,16 +119,11 @@ function getMessage(year, month, day) {
 function addMessage(year, month, day, message) {
     const key = getDayKey(year, month, day);
     
-    // Verifica se já existe mensagem (proteção extra)
-    if (calendarData[key]) {
-        alert('Este dia já foi preenchido!');
-        return false;
-    }
-    
-    // Adiciona a mensagem com timestamp
+    // Adiciona a mensagem com timestamp e userId
     calendarData[key] = {
         message: message.trim(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        userId: userId
     };
     
     // Salva no armazenamento
@@ -116,6 +131,76 @@ function addMessage(year, month, day, message) {
     
     if (saved) {
         // Recarrega o calendário para mostrar a atualização
+        renderCalendar();
+    }
+    
+    return saved;
+}
+
+/**
+ * Atualiza uma mensagem existente
+ */
+function updateMessage(year, month, day, newMessage) {
+    const key = getDayKey(year, month, day);
+    const existingData = calendarData[key];
+    
+    if (!existingData) {
+        alert('Mensagem não encontrada!');
+        return false;
+    }
+    
+    // Verifica se é o autor
+    if (existingData.userId !== userId) {
+        alert('Você só pode editar suas próprias mensagens!');
+        return false;
+    }
+    
+    // Atualiza a mensagem mantendo o userId original
+    calendarData[key] = {
+        message: newMessage.trim(),
+        timestamp: new Date().toISOString(),
+        userId: existingData.userId,
+        edited: true
+    };
+    
+    const saved = saveCalendarData();
+    
+    if (saved) {
+        renderCalendar();
+    }
+    
+    return saved;
+}
+
+/**
+ * Remove uma mensagem
+ */
+function deleteMessage(year, month, day) {
+    const key = getDayKey(year, month, day);
+    const existingData = calendarData[key];
+    
+    if (!existingData) {
+        alert('Mensagem não encontrada!');
+        return false;
+    }
+    
+    // Verifica se é o autor
+    if (existingData.userId !== userId) {
+        alert('Você só pode excluir suas próprias mensagens!');
+        return false;
+    }
+    
+    // Confirma a exclusão
+    if (!confirm('Tem certeza que deseja excluir esta mensagem?')) {
+        return false;
+    }
+    
+    // Remove a mensagem
+    delete calendarData[key];
+    
+    const saved = saveCalendarData();
+    
+    if (saved) {
         renderCalendar();
     }
     
@@ -234,7 +319,47 @@ function renderDayCell(year, month, day, isOtherMonth) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'day-message';
         messageDiv.textContent = messageData.message;
+        
+        // Adiciona indicador de editado
+        if (messageData.edited) {
+            const editedLabel = document.createElement('span');
+            editedLabel.className = 'edited-label';
+            editedLabel.textContent = ' (editado)';
+            messageDiv.appendChild(editedLabel);
+        }
+        
         dayCell.appendChild(messageDiv);
+        
+        // Verifica se é mensagem do usuário atual
+        if (messageData.userId === userId) {
+            dayCell.classList.add('own-message');
+            
+            // Container dos botões de ação
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'message-actions';
+            
+            // Botão Editar
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn-edit';
+            editBtn.innerHTML = '✏️ Editar';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                openEditModal(year, month, day, messageData.message);
+            };
+            
+            // Botão Excluir
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-delete';
+            deleteBtn.innerHTML = '🗑️ Excluir';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteMessage(year, month, day);
+            };
+            
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(deleteBtn);
+            dayCell.appendChild(actionsDiv);
+        }
     } else if (!isOtherMonth) {
         // Dia vazio (disponível para preenchimento)
         dayCell.classList.add('empty');
@@ -265,19 +390,51 @@ function openModal(year, month, day) {
         return;
     }
     
-    selectedDay = { year, month, day };
+    selectedDay = { year, month, day, isEdit: false };
     
     // Formata a data para exibição
     const dateStr = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
     modalDateElement.textContent = dateStr;
     
+    // Atualiza o título do modal
+    document.querySelector('.modal-content h3').innerHTML = `Adicionar mensagem para <span id="modalDate">${dateStr}</span>`;
+    
     // Limpa o input
     messageInput.value = '';
     charCount.textContent = '0';
     
+    // Atualiza o botão
+    saveMessageBtn.textContent = 'Salvar Mensagem';
+    
     // Exibe o modal
     modal.style.display = 'block';
     messageInput.focus();
+}
+
+/**
+ * Abre o modal para editar mensagem
+ */
+function openEditModal(year, month, day, currentMessage) {
+    selectedDay = { year, month, day, isEdit: true };
+    
+    // Formata a data para exibição
+    const dateStr = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+    modalDateElement.textContent = dateStr;
+    
+    // Atualiza o título do modal
+    document.querySelector('.modal-content h3').innerHTML = `Editar mensagem de <span id="modalDate">${dateStr}</span>`;
+    
+    // Preenche com a mensagem atual
+    messageInput.value = currentMessage;
+    charCount.textContent = currentMessage.length;
+    
+    // Atualiza o botão
+    saveMessageBtn.textContent = 'Atualizar Mensagem';
+    
+    // Exibe o modal
+    modal.style.display = 'block';
+    messageInput.focus();
+    messageInput.select(); // Seleciona o texto para facilitar edição
 }
 
 /**
@@ -309,19 +466,31 @@ function saveMessage() {
     
     // Desabilita o botão durante o salvamento
     saveMessageBtn.disabled = true;
+    const originalText = saveMessageBtn.textContent;
     saveMessageBtn.textContent = 'Salvando...';
     
-    // Adiciona a mensagem
-    const success = addMessage(
-        selectedDay.year,
-        selectedDay.month,
-        selectedDay.day,
-        message
-    );
+    let success;
+    
+    // Verifica se é edição ou nova mensagem
+    if (selectedDay.isEdit) {
+        success = updateMessage(
+            selectedDay.year,
+            selectedDay.month,
+            selectedDay.day,
+            message
+        );
+    } else {
+        success = addMessage(
+            selectedDay.year,
+            selectedDay.month,
+            selectedDay.day,
+            message
+        );
+    }
     
     // Reabilita o botão
     saveMessageBtn.disabled = false;
-    saveMessageBtn.textContent = 'Salvar Mensagem';
+    saveMessageBtn.textContent = originalText;
     
     if (success) {
         closeModalWindow();
@@ -415,6 +584,10 @@ messageInput.addEventListener('keydown', (event) => {
  */
 function init() {
     console.log('Iniciando Calendário Colaborativo...');
+    
+    // Obtém ou cria ID do usuário
+    userId = getUserId();
+    console.log('User ID:', userId);
     
     // Carrega os dados salvos
     loadCalendarData();
