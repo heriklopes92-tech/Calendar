@@ -5,12 +5,14 @@
 // Data atual do calendário (mês/ano sendo visualizado)
 let currentDate = new Date();
 
-
 // Armazena os dados do calendário em memória
 let calendarData = {};
 
-// ID único do usuário (gerado na primeira vez)
+// ID do usuário (agora do Firebase Auth)
 let userId = null;
+
+// Referência do Firestore
+let calendarCollection = null;
 
 // Referências aos elementos DOM
 const calendarElement = document.getElementById('calendar');
@@ -29,67 +31,173 @@ const loadingOverlay = document.getElementById('loadingOverlay');
 let selectedDay = null;
 
 // ============================================
-// FUNÇÕES DE IDENTIFICAÇÃO DO USUÁRIO
+// FUNÇÕES DO FIRESTORE
 // ============================================
 
 /**
- * Obtém ou cria um ID único para o usuário
+ * Inicializa o Firestore
  */
-function getUserId() {
-    let id = localStorage.getItem('user-id');
-    if (!id) {
-        // Gera um ID único baseado em timestamp e random
-        id = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('user-id', id);
-    }
-    return id;
-}
-
-// ============================================
-// FUNÇÕES DE ARMAZENAMENTO (LOCALSTORAGE)
-// ============================================
-
-/**
- * Carrega os dados do calendário do localStorage
- * Dados ficam salvos no navegador de cada usuário
- */
-function loadCalendarData() {
+async function initFirebase() {
     try {
-        // Tenta carregar os dados do localStorage
-        const savedData = localStorage.getItem('calendar-data');
+        // Aguarda o login anônimo ser concluído
+        await new Promise((resolve) => {
+            const checkAuth = () => {
+                if (window.userId) {
+                    userId = window.userId;
+                    resolve();
+                } else {
+                    setTimeout(checkAuth, 100);
+                }
+            };
+            checkAuth();
+        });
+
+        // Configura a coleção do Firestore
+        calendarCollection = window.db.collection('calendar');
         
-        if (savedData) {
-            // Parse dos dados JSON armazenados
-            calendarData = JSON.parse(savedData);
-            console.log('Dados carregados:', Object.keys(calendarData).length, 'entradas');
-        } else {
-            // Se não houver dados, inicia com objeto vazio
-            calendarData = {};
-            console.log('Nenhum dado encontrado, iniciando calendário vazio');
-        }
-    } catch (error) {
-        // Se houver erro no parse, inicia vazio
-        console.log('Erro ao carregar dados:', error.message);
-        calendarData = {};
-    }
-}
-
-/**
- * Salva os dados do calendário no localStorage
- * Dados ficam salvos no navegador de cada usuário
- */
-function saveCalendarData() {
-    try {
-        // Salva como JSON no localStorage
-        localStorage.setItem('calendar-data', JSON.stringify(calendarData));
-        console.log('Dados salvos com sucesso');
+        // Configura o listener em tempo real
+        setupRealtimeListener();
+        
+        console.log('Firestore inicializado com sucesso!');
         return true;
     } catch (error) {
-        console.error('Erro ao salvar dados:', error);
-        alert('Erro ao salvar a mensagem. Por favor, tente novamente.');
+        console.error('Erro ao inicializar Firebase:', error);
+        showError('Erro ao conectar com o servidor. Usando modo offline.');
         return false;
     }
 }
+
+/**
+ * Configura o listener em tempo real do Firestore
+ */
+function setupRealtimeListener() {
+    // Limpa dados locais
+    calendarData = {};
+    
+    // Escuta todas as mudanças na coleção 'calendar'
+    window.firestore.onSnapshot(
+        window.firestore.collection(window.db, 'calendar'),
+        (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                const data = change.doc.data();
+                const dayKey = change.doc.id;
+                
+                if (change.type === 'added' || change.type === 'modified') {
+                    // Adiciona ou atualiza no cache local
+                    calendarData[dayKey] = {
+                        message: data.message,
+                        timestamp: data.timestamp,
+                        userId: data.userId,
+                        edited: data.edited || false
+                    };
+                } else if (change.type === 'removed') {
+                    // Remove do cache local
+                    delete calendarData[dayKey];
+                }
+            });
+            
+            // Renderiza o calendário com os novos dados
+            renderCalendar();
+            hideLoading();
+        },
+        (error) => {
+            console.error('Erro no listener do Firestore:', error);
+            showError('Erro na conexão em tempo real.');
+            hideLoading();
+        }
+    );
+}
+
+/**
+ * Salva uma mensagem no Firestore
+ */
+async function saveMessageToFirestore(year, month, day, message, isEdit = false) {
+    try {
+        showLoading();
+        
+        const dayKey = getDayKey(year, month, day);
+        const timestamp = new Date().toISOString();
+        
+        const messageData = {
+            message: message.trim(),
+            timestamp: timestamp,
+            userId: userId,
+            edited: isEdit
+        };
+        
+        if (isEdit) {
+            // Atualiza mensagem existente
+            await window.firestore.setDoc(
+                window.firestore.doc(window.db, 'calendar', dayKey),
+                messageData
+            );
+            console.log('Mensagem atualizada no Firestore:', dayKey);
+        } else {
+            // Cria nova mensagem (Firestore não permite sobrescrever se já existir)
+            const docRef = window.firestore.doc(window.db, 'calendar', dayKey);
+            const docSnap = await window.firestore.getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                throw new Error('Este dia já foi preenchido por outro usuário!');
+            }
+            
+            await window.firestore.setDoc(docRef, messageData);
+            console.log('Mensagem salva no Firestore:', dayKey);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar no Firestore:', error);
+        alert(error.message || 'Erro ao salvar a mensagem. Por favor, tente novamente.');
+        return false;
+    } finally {
+        hideLoading();
+    }
+}
+
+/**
+ * Remove uma mensagem do Firestore
+ */
+async function deleteMessageFromFirestore(year, month, day) {
+    try {
+        showLoading();
+        
+        const dayKey = getDayKey(year, month, day);
+        const docRef = window.firestore.doc(window.db, 'calendar', dayKey);
+        const docSnap = await window.firestore.getDoc(docRef);
+        
+        if (!docSnap.exists()) {
+            throw new Error('Mensagem não encontrada!');
+        }
+        
+        const data = docSnap.data();
+        
+        // Verifica se é o autor
+        if (data.userId !== userId) {
+            throw new Error('Você só pode excluir suas próprias mensagens!');
+        }
+        
+        // Confirma a exclusão
+        if (!confirm('Tem certeza que deseja excluir esta mensagem?')) {
+            hideLoading();
+            return false;
+        }
+        
+        await window.firestore.deleteDoc(docRef);
+        console.log('Mensagem excluída do Firestore:', dayKey);
+        return true;
+    } catch (error) {
+        console.error('Erro ao excluir do Firestore:', error);
+        alert(error.message || 'Erro ao excluir a mensagem.');
+        return false;
+    } finally {
+        hideLoading();
+    }
+}
+
+// ============================================
+// FUNÇÕES UTILITÁRIAS
+// ============================================
 
 /**
  * Gera uma chave única para cada dia (formato: YYYY-MM-DD)
@@ -113,100 +221,6 @@ function hasMessage(year, month, day) {
 function getMessage(year, month, day) {
     const key = getDayKey(year, month, day);
     return calendarData[key] || null;
-}
-
-/**
- * Adiciona uma mensagem para um dia específico
- */
-function addMessage(year, month, day, message) {
-    const key = getDayKey(year, month, day);
-    
-    // Adiciona a mensagem com timestamp e userId
-    calendarData[key] = {
-        message: message.trim(),
-        timestamp: new Date().toISOString(),
-        userId: userId
-    };
-    
-    // Salva no armazenamento
-    const saved = saveCalendarData();
-    
-    if (saved) {
-        // Recarrega o calendário para mostrar a atualização
-        renderCalendar();
-    }
-    
-    return saved;
-}
-
-/**
- * Atualiza uma mensagem existente
- */
-function updateMessage(year, month, day, newMessage) {
-    const key = getDayKey(year, month, day);
-    const existingData = calendarData[key];
-    
-    if (!existingData) {
-        alert('Mensagem não encontrada!');
-        return false;
-    }
-    
-    // Verifica se é o autor
-    if (existingData.userId !== userId) {
-        alert('Você só pode editar suas próprias mensagens!');
-        return false;
-    }
-    
-    // Atualiza a mensagem mantendo o userId original
-    calendarData[key] = {
-        message: newMessage.trim(),
-        timestamp: new Date().toISOString(),
-        userId: existingData.userId,
-        edited: true
-    };
-    
-    const saved = saveCalendarData();
-    
-    if (saved) {
-        renderCalendar();
-    }
-    
-    return saved;
-}
-
-/**
- * Remove uma mensagem
- */
-function deleteMessage(year, month, day) {
-    const key = getDayKey(year, month, day);
-    const existingData = calendarData[key];
-    
-    if (!existingData) {
-        alert('Mensagem não encontrada!');
-        return false;
-    }
-    
-    // Verifica se é o autor
-    if (existingData.userId !== userId) {
-        alert('Você só pode excluir suas próprias mensagens!');
-        return false;
-    }
-    
-    // Confirma a exclusão
-    if (!confirm('Tem certeza que deseja excluir esta mensagem?')) {
-        return false;
-    }
-    
-    // Remove a mensagem
-    delete calendarData[key];
-    
-    const saved = saveCalendarData();
-    
-    if (saved) {
-        renderCalendar();
-    }
-    
-    return saved;
 }
 
 // ============================================
@@ -285,10 +299,10 @@ function renderDays(year, month) {
     }
     
     // Dias do próximo mês (para preencher final)
-    const totalCells = calendarElement.children.length - 7; // Subtrai cabeçalho
-    const remainingCells = 35 - totalCells; // Grid de 5 semanas
+    const totalCells = calendarElement.children.length - 7;
+    const remainingCells = 35 - totalCells;
     
-    for (let day = 1; day <= remainingCells; day++) {
+    for (let day = 1; day <= remainingCells; {
         renderDayCell(year, month + 1, day, true);
     }
 }
@@ -300,29 +314,25 @@ function renderDayCell(year, month, day, isOtherMonth) {
     const dayCell = document.createElement('div');
     dayCell.className = 'day-cell';
     
-    // Adiciona classe se for de outro mês
     if (isOtherMonth) {
         dayCell.classList.add('other-month');
     }
     
-    // Número do dia
     const dayNumber = document.createElement('div');
     dayNumber.className = 'day-number';
     dayNumber.textContent = day;
     dayCell.appendChild(dayNumber);
     
-    // Verifica se tem mensagem
-    const messageData = calendarData[getDayKey(year, month, day)];
+    const key = getDayKey(year, month, day);
+    const messageData = calendarData[key];
     
     if (messageData) {
-        // Dia preenchido
         dayCell.classList.add('filled');
         
         const messageDiv = document.createElement('div');
         messageDiv.className = 'day-message';
         messageDiv.textContent = messageData.message;
         
-        // Adiciona indicador de editado
         if (messageData.edited) {
             const editedLabel = document.createElement('span');
             editedLabel.className = 'edited-label';
@@ -332,15 +342,12 @@ function renderDayCell(year, month, day, isOtherMonth) {
         
         dayCell.appendChild(messageDiv);
         
-        // Verifica se é mensagem do usuário atual
         if (messageData.userId === userId) {
             dayCell.classList.add('own-message');
             
-            // Container dos botões de ação
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'message-actions';
             
-            // Botão Editar
             const editBtn = document.createElement('button');
             editBtn.className = 'btn-edit';
             editBtn.innerHTML = '✏️ Editar';
@@ -349,7 +356,6 @@ function renderDayCell(year, month, day, isOtherMonth) {
                 openEditModal(year, month, day, messageData.message);
             };
             
-            // Botão Excluir
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn-delete';
             deleteBtn.innerHTML = '🗑️ Excluir';
@@ -363,7 +369,6 @@ function renderDayCell(year, month, day, isOtherMonth) {
             dayCell.appendChild(actionsDiv);
         }
     } else if (!isOtherMonth) {
-        // Dia vazio (disponível para preenchimento)
         dayCell.classList.add('empty');
         
         const emptyState = document.createElement('div');
@@ -371,7 +376,6 @@ function renderDayCell(year, month, day, isOtherMonth) {
         emptyState.textContent = 'Clique para adicionar';
         dayCell.appendChild(emptyState);
         
-        // Adiciona evento de clique apenas para dias vazios do mês atual
         dayCell.addEventListener('click', () => openModal(year, month, day));
     }
     
@@ -382,80 +386,47 @@ function renderDayCell(year, month, day, isOtherMonth) {
 // FUNÇÕES DO MODAL
 // ============================================
 
-/**
- * Abre o modal para adicionar mensagem
- */
 function openModal(year, month, day) {
-    // Verifica novamente se o dia está vazio (proteção dupla)
     if (hasMessage(year, month, day)) {
         alert('Este dia já foi preenchido!');
         return;
     }
     
     selectedDay = { year, month, day, isEdit: false };
-    
-    // Formata a data para exibição
     const dateStr = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
     modalDateElement.textContent = dateStr;
     
-    // Atualiza o título do modal
-    document.querySelector('.modal-content h3').innerHTML = `Adicionar mensagem para <span id="modalDate">${dateStr}</span>`;
-    
-    // Limpa o input
     messageInput.value = '';
     charCount.textContent = '0';
-    
-    // Atualiza o botão
     saveMessageBtn.textContent = 'Salvar Mensagem';
     
-    // Exibe o modal
     modal.style.display = 'block';
     messageInput.focus();
 }
 
-/**
- * Abre o modal para editar mensagem
- */
 function openEditModal(year, month, day, currentMessage) {
     selectedDay = { year, month, day, isEdit: true };
-    
-    // Formata a data para exibição
     const dateStr = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
     modalDateElement.textContent = dateStr;
     
-    // Atualiza o título do modal
-    document.querySelector('.modal-content h3').innerHTML = `Editar mensagem de <span id="modalDate">${dateStr}</span>`;
-    
-    // Preenche com a mensagem atual
     messageInput.value = currentMessage;
     charCount.textContent = currentMessage.length;
-    
-    // Atualiza o botão
     saveMessageBtn.textContent = 'Atualizar Mensagem';
     
-    // Exibe o modal
     modal.style.display = 'block';
     messageInput.focus();
-    messageInput.select(); // Seleciona o texto para facilitar edição
 }
 
-/**
- * Fecha o modal
- */
 function closeModalWindow() {
     modal.style.display = 'none';
     selectedDay = null;
 }
 
-/**
- * Salva a mensagem do modal
- */
-function saveMessage() {
+async function saveMessage() {
     if (!selectedDay) return;
     
     const message = messageInput.value.trim();
     
-    // Validação
     if (!message) {
         alert('Por favor, digite uma mensagem!');
         return;
@@ -466,31 +437,18 @@ function saveMessage() {
         return;
     }
     
-    // Desabilita o botão durante o salvamento
     saveMessageBtn.disabled = true;
     const originalText = saveMessageBtn.textContent;
     saveMessageBtn.textContent = 'Salvando...';
     
-    let success;
+    const success = await saveMessageToFirestore(
+        selectedDay.year,
+        selectedDay.month,
+        selectedDay.day,
+        message,
+        selectedDay.isEdit
+    );
     
-    // Verifica se é edição ou nova mensagem
-    if (selectedDay.isEdit) {
-        success = updateMessage(
-            selectedDay.year,
-            selectedDay.month,
-            selectedDay.day,
-            message
-        );
-    } else {
-        success = addMessage(
-            selectedDay.year,
-            selectedDay.month,
-            selectedDay.day,
-            message
-        );
-    }
-    
-    // Reabilita o botão
     saveMessageBtn.disabled = false;
     saveMessageBtn.textContent = originalText;
     
@@ -499,21 +457,22 @@ function saveMessage() {
     }
 }
 
+async function deleteMessage(year, month, day) {
+    const success = await deleteMessageFromFirestore(year, month, day);
+    if (success) {
+        renderCalendar();
+    }
+}
+
 // ============================================
 // FUNÇÕES DE NAVEGAÇÃO
 // ============================================
 
-/**
- * Navega para o mês anterior
- */
 function previousMonth() {
     currentDate.setMonth(currentDate.getMonth() - 1);
     renderCalendar();
 }
 
-/**
- * Navega para o próximo mês
- */
 function nextMonth() {
     currentDate.setMonth(currentDate.getMonth() + 1);
     renderCalendar();
@@ -523,54 +482,41 @@ function nextMonth() {
 // FUNÇÕES AUXILIARES
 // ============================================
 
-/**
- * Exibe/oculta overlay de carregamento
- */
-function showLoading(show) {
-    if (show) {
-        loadingOverlay.classList.add('active');
-    } else {
-        loadingOverlay.classList.remove('active');
-    }
+function showLoading() {
+    loadingOverlay.classList.add('active');
 }
 
-/**
- * Atualiza o contador de caracteres
- */
+function hideLoading() {
+    loadingOverlay.classList.remove('active');
+}
+
+function showError(message) {
+    console.error(message);
+    // Pode implementar uma notificação mais amigável aqui
+}
+
 function updateCharCount() {
     const length = messageInput.value.length;
     charCount.textContent = length;
-    
-    if (length > 200) {
-        charCount.style.color = 'red';
-    } else {
-        charCount.style.color = '#666';
-    }
+    charCount.style.color = length > 200 ? 'red' : '#666';
 }
 
 // ============================================
 // EVENT LISTENERS
 // ============================================
 
-// Navegação do calendário
 prevMonthBtn.addEventListener('click', previousMonth);
 nextMonthBtn.addEventListener('click', nextMonth);
-
-// Modal
 closeModal.addEventListener('click', closeModalWindow);
 saveMessageBtn.addEventListener('click', saveMessage);
 
-// Fecha modal ao clicar fora dele
 window.addEventListener('click', (event) => {
     if (event.target === modal) {
         closeModalWindow();
     }
 });
 
-// Contador de caracteres
 messageInput.addEventListener('input', updateCharCount);
-
-// Permite salvar com Enter (Ctrl+Enter)
 messageInput.addEventListener('keydown', (event) => {
     if (event.ctrlKey && event.key === 'Enter') {
         saveMessage();
@@ -581,23 +527,24 @@ messageInput.addEventListener('keydown', (event) => {
 // INICIALIZAÇÃO
 // ============================================
 
-/**
- * Inicializa o aplicativo
- */
-function init() {
-    console.log('Iniciando Calendário Colaborativo...');
+async function init() {
+    console.log('Iniciando Calendário Colaborativo com Firebase...');
+    showLoading();
     
-    // Obtém ou cria ID do usuário
-    userId = getUserId();
-    console.log('User ID:', userId);
-    
-    // Carrega os dados salvos
-    loadCalendarData();
-    
-    // Renderiza o calendário inicial
-    renderCalendar();
-    
-    console.log('Calendário pronto!');
+    try {
+        // Inicializa Firebase
+        await initFirebase();
+        console.log('Firebase inicializado, User ID:', userId);
+        
+        // Renderiza calendário (dados virão do listener em tempo real)
+        renderCalendar();
+        
+        console.log('Calendário pronto para uso colaborativo!');
+    } catch (error) {
+        console.error('Erro na inicialização:', error);
+        showError('Erro ao inicializar o aplicativo.');
+        hideLoading();
+    }
 }
 
 // Inicia quando a página carregar
@@ -605,14 +552,4 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
-}
-//função para criar botao de excluir agendamento
-function removeMessage(year, month, day) {
-    const key = getDayKey(year, month, day);
-
-    if (calendarData[key]) {
-        delete calendarData[key];
-        saveCalendarData();
-        renderCalendar();
-    }
 }
