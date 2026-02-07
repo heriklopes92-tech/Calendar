@@ -312,7 +312,7 @@ function renderDayCell(year, month, day, isOtherMonth) {
     dayCell.appendChild(dayNumber);
     
     // Verifica se tem mensagem
-    const messageData = getMessage(year, month, day);
+    const messageData = calendarData[getDayKey(year, month, day)];
     
     if (messageData) {
         // Dia preenchido
