@@ -32,8 +32,7 @@ let selectedDay = null;
  * Carrega os dados do calendário do localStorage
  * Dados ficam salvos no navegador de cada usuário
  */
-async function loadCalendarData() {
-    showLoading(true);
+function loadCalendarData() {
     try {
         // Tenta carregar os dados do localStorage
         const savedData = localStorage.getItem('calendar-data');
@@ -51,8 +50,6 @@ async function loadCalendarData() {
         // Se houver erro no parse, inicia vazio
         console.log('Erro ao carregar dados:', error.message);
         calendarData = {};
-    } finally {
-        showLoading(false);
     }
 }
 
@@ -60,8 +57,7 @@ async function loadCalendarData() {
  * Salva os dados do calendário no localStorage
  * Dados ficam salvos no navegador de cada usuário
  */
-async function saveCalendarData() {
-    showLoading(true);
+function saveCalendarData() {
     try {
         // Salva como JSON no localStorage
         localStorage.setItem('calendar-data', JSON.stringify(calendarData));
@@ -71,8 +67,6 @@ async function saveCalendarData() {
         console.error('Erro ao salvar dados:', error);
         alert('Erro ao salvar a mensagem. Por favor, tente novamente.');
         return false;
-    } finally {
-        showLoading(false);
     }
 }
 
@@ -102,7 +96,7 @@ function getMessage(year, month, day) {
 /**
  * Adiciona uma mensagem para um dia específico
  */
-async function addMessage(year, month, day, message) {
+function addMessage(year, month, day, message) {
     const key = getDayKey(year, month, day);
     
     // Verifica se já existe mensagem (proteção extra)
@@ -118,7 +112,7 @@ async function addMessage(year, month, day, message) {
     };
     
     // Salva no armazenamento
-    const saved = await saveCalendarData();
+    const saved = saveCalendarData();
     
     if (saved) {
         // Recarrega o calendário para mostrar a atualização
@@ -297,7 +291,7 @@ function closeModalWindow() {
 /**
  * Salva a mensagem do modal
  */
-async function saveMessage() {
+function saveMessage() {
     if (!selectedDay) return;
     
     const message = messageInput.value.trim();
@@ -318,7 +312,7 @@ async function saveMessage() {
     saveMessageBtn.textContent = 'Salvando...';
     
     // Adiciona a mensagem
-    const success = await addMessage(
+    const success = addMessage(
         selectedDay.year,
         selectedDay.month,
         selectedDay.day,
@@ -419,11 +413,11 @@ messageInput.addEventListener('keydown', (event) => {
 /**
  * Inicializa o aplicativo
  */
-async function init() {
+function init() {
     console.log('Iniciando Calendário Colaborativo...');
     
     // Carrega os dados salvos
-    await loadCalendarData();
+    loadCalendarData();
     
     // Renderiza o calendário inicial
     renderCalendar();
