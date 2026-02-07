@@ -813,78 +813,8 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
-/*
-// Detectar dispositivo móvel e ajustar interface
-function detectMobileAndAdjust() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-        console.log('Dispositivo móvel detectado, aplicando ajustes...');
-        
-        // Adiciona classe ao body para estilos específicos
-        document.body.classList.add('is-mobile');
-        
-        // Aumenta tamanho da fonte se for muito pequeno
-        const baseFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
-        if (baseFontSize < 16) {
-            document.documentElement.style.fontSize = '16px';
-        }
-        
-        // Ajusta altura mínima para toque
-        document.querySelectorAll('.day-cell').forEach(cell => {
-            if (cell.classList.contains('empty')) {
-                cell.style.minHeight = '110px';
-            }
-        });
-    }
-}
 
-// Chame esta função após init()
-detectMobileAndAdjust();
-
-// Ajuste automático para dispositivos móveis
-function adjustForMobile() {
-    const isMobile = window.innerWidth <= 768;
-    
-    if (isMobile) {
-        console.log('Aplicando ajustes para mobile...');
-        
-        // Aumenta fontes
-        document.querySelectorAll('.day-message').forEach(el => {
-            el.style.fontSize = '14px';
-            el.style.lineHeight = '1.4';
-        });
-        
-        document.querySelectorAll('.day-number').forEach(el => {
-            el.style.fontSize = '16px';
-            el.style.fontWeight = 'bold';
-        });
-        
-        document.querySelectorAll('.day-cell').forEach(el => {
-            el.style.minHeight = '100px';
-        });
-        
-        // Mostra botões de ação sempre
-        document.querySelectorAll('.message-actions').forEach(el => {
-            el.style.opacity = '1';
-            el.style.display = 'flex';
-        });
-        
-        // Ajusta cabeçalho
-        const title = document.querySelector('header h1');
-        if (title && window.innerWidth <= 480) {
-            title.style.fontSize = '1.5rem';
-        }
-    }
-}
-
-// Executa após renderizar e quando redimensionar
-window.addEventListener('resize', adjustForMobile);
-
-// Chame após init() ou renderCalendar()
-setTimeout(adjustForMobile, 1000);
-*/
-/* Reset básico */
+// Reset básico
 {
     margin: 0;
     padding: 0;
