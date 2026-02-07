@@ -107,6 +107,11 @@ header h1 {
     border-color: #4caf50;
 }
 
+.box.own {
+    background: linear-gradient(135deg, #ffd89b 0%, #ffb347 100%);
+    border-color: #ff9800;
+}
+
 /* Grid do calendário */
 .calendar {
     display: grid;
@@ -169,6 +174,71 @@ header h1 {
 
 .day-cell.filled:hover {
     transform: none;
+}
+
+/* Mensagens do próprio usuário */
+.day-cell.own-message {
+    background: linear-gradient(135deg, #ffd89b 0%, #ffb347 100%);
+    border-color: #ff9800;
+    cursor: pointer;
+}
+
+.day-cell.own-message:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 152, 0, 0.3);
+}
+
+/* Botões de ação (Editar/Excluir) */
+.message-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.day-cell.own-message:hover .message-actions {
+    opacity: 1;
+}
+
+.btn-edit,
+.btn-delete {
+    flex: 1;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+}
+
+.btn-edit {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #45a049;
+    transform: scale(1.05);
+}
+
+.btn-delete {
+    background: #f44336;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #da190b;
+    transform: scale(1.05);
+}
+
+/* Label de editado */
+.edited-label {
+    font-size: 0.7rem;
+    color: #666;
+    font-style: italic;
+    opacity: 0.8;
 }
 
 .day-number {
