@@ -841,7 +841,7 @@ function detectMobileAndAdjust() {
 
 // Chame esta função após init()
 detectMobileAndAdjust();
-*/
+
 // Ajuste automático para dispositivos móveis
 function adjustForMobile() {
     const isMobile = window.innerWidth <= 768;
@@ -883,3 +883,575 @@ window.addEventListener('resize', adjustForMobile);
 
 // Chame após init() ou renderCalendar()
 setTimeout(adjustForMobile, 1000);
+*/
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+    font-size: 16px; /* BASE para mobile */
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Header */
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+/* Controles de navegação */
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#currentMonth {
+    font-size: 1.8rem;
+    color: #333;
+    flex: 1;
+    text-align: center;
+}
+
+.btn-nav {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s;
+    font-weight: 600;
+}
+
+.btn-nav:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Legenda */
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.box {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid #ddd;
+}
+
+.box.available {
+    background: #fff;
+}
+
+.box.filled {
+    background: #a8e6cf;
+    border-color: #4caf50;
+}
+
+.box.own {
+    background: linear-gradient(135deg, #ffd89b 0%, #ffb347 100%);
+    border-color: #ff9800;
+}
+
+/* Grid do calendário */
+.calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+/* Cabeçalho dos dias da semana */
+.day-header {
+    text-align: center;
+    font-weight: 700;
+    color: #667eea;
+    padding: 15px 5px;
+    font-size: 0.9rem;
+    background: #f0f4ff;
+    border-radius: 8px;
+}
+
+/* Células dos dias */
+.day-cell {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 15px 10px;
+    min-height: 120px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.day-cell:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
+}
+
+.day-cell.empty {
+    background: #fafafa;
+}
+
+.day-cell.other-month {
+    background: #f5f5f5;
+    opacity: 0.5;
+    cursor: default;
+}
+
+.day-cell.other-month:hover {
+    transform: none;
+    border-color: #e0e0e0;
+    box-shadow: none;
+}
+
+.day-cell.filled {
+    background: linear-gradient(135deg, #a8e6cf 0%, #8fd3c7 100%);
+    border-color: #4caf50;
+    cursor: default;
+}
+
+.day-cell.filled:hover {
+    transform: none;
+}
+
+/* Mensagens do próprio usuário */
+.day-cell.own-message {
+    background: linear-gradient(135deg, #ffd89b 0%, #ffb347 100%);
+    border-color: #ff9800;
+    cursor: pointer;
+}
+
+.day-cell.own-message:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 152, 0, 0.3);
+}
+
+/* Botões de ação (Editar/Excluir) */
+.message-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.day-cell.own-message:hover .message-actions {
+    opacity: 1;
+}
+
+.btn-edit,
+.btn-delete {
+    flex: 1;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+}
+
+.btn-edit {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #45a049;
+    transform: scale(1.05);
+}
+
+.btn-delete {
+    background: #f44336;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #da190b;
+    transform: scale(1.05);
+}
+
+/* Label de editado */
+.edited-label {
+    font-size: 0.7rem;
+    color: #666;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.day-number {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.day-cell.other-month .day-number {
+    color: #999;
+}
+
+.day-message {
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.4;
+    word-wrap: break-word;
+    max-height: 80px;
+    overflow: auto;
+}
+
+.empty-state {
+    color: #999;
+    font-size: 0.8rem;
+    font-style: italic;
+    text-align: center;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 30px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+#modalDate {
+    color: #667eea;
+}
+
+#messageInput {
+    width: 100%;
+    min-height: 120px;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 10px;
+    transition: border-color 0.3s;
+}
+
+#messageInput:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.char-counter {
+    text-align: right;
+    color: #666;
+    font-size: 0.85rem;
+    margin-bottom: 15px;
+}
+
+.btn-save {
+    width: 100%;
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-save:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-save:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Info */
+.info {
+    background: #f0f4ff;
+    padding: 20px;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+}
+
+.info p {
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.info ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.info li {
+    padding: 5px 0;
+    color: #666;
+}
+
+.info li:before {
+    content: "✓ ";
+    color: #4caf50;
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+/* ============================================
+   ESTILOS ESPECÍFICOS PARA MOBILE (GARANTIDOS)
+   ============================================ */
+
+/* IMPORTANTE: Sem @media query - aplica sempre que a tela for menor */
+/* Usamos classes que serão adicionadas via JavaScript */
+
+.mobile-view .container {
+    padding: 15px;
+}
+
+.mobile-view header h1 {
+    font-size: 1.6rem !important;
+    line-height: 1.3;
+}
+
+.mobile-view .subtitle {
+    font-size: 0.95rem !important;
+}
+
+.mobile-view .controls {
+    flex-direction: column;
+}
+
+.mobile-view #currentMonth {
+    order: -1;
+    margin-bottom: 15px;
+    font-size: 1.4rem !important;
+}
+
+.mobile-view .btn-nav {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem !important;
+}
+
+.mobile-view .legend {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.mobile-view .calendar {
+    gap: 6px;
+}
+
+.mobile-view .day-header {
+    padding: 12px 3px;
+    font-size: 0.85rem !important;
+}
+
+.mobile-view .day-cell {
+    min-height: 100px !important;
+    padding: 10px 6px;
+}
+
+.mobile-view .day-number {
+    font-size: 1rem !important;
+    margin-bottom: 6px;
+}
+
+.mobile-view .day-message {
+    font-size: 0.85rem !important;
+    line-height: 1.3;
+}
+
+.mobile-view .empty-state {
+    font-size: 0.85rem !important;
+}
+
+/* Botões sempre visíveis em mobile */
+.mobile-view .message-actions {
+    opacity: 1 !important;
+    display: flex !important;
+    margin-top: 8px;
+}
+
+.mobile-view .btn-edit,
+.mobile-view .btn-delete {
+    font-size: 0.75rem !important;
+    padding: 5px 8px;
+}
+
+.mobile-view .info {
+    font-size: 0.9rem;
+    padding: 15px;
+}
+
+.mobile-view .info li {
+    font-size: 0.85rem;
+}
+
+/* Modal em mobile */
+.mobile-view .modal-content {
+    margin: 5% auto;
+    padding: 20px;
+    width: 95%;
+}
+
+.mobile-view .modal-content h3 {
+    font-size: 1.2rem;
+}
+
+.mobile-view #messageInput {
+    font-size: 16px !important; /* Evita zoom no iOS */
+    min-height: 100px;
+}
+
+/* Pequenos ajustes para telas muito pequenas */
+.small-mobile-view .day-cell {
+    min-height: 90px !important;
+    padding: 8px 4px;
+}
+
+.small-mobile-view .day-message {
+    font-size: 0.8rem !important;
+}
+
+.small-mobile-view .day-number {
+    font-size: 0.95rem !important;
+}
