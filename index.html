@@ -61,7 +61,36 @@
         <div class="spinner"></div>
         <p>Carregando dados...</p>
     </div>
+<!-- Firebase -->
+<script type="module">
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCuiXz7xhCqPKQ5eUQO0Ka_AJei_vHqYCY",
+  authDomain: "calendar-fa9b8.firebaseapp.com",
+  projectId: "calendar-fa9b8",
+  storageBucket: "calendar-fa9b8.firebasestorage.app",
+  messagingSenderId: "695207212728",
+  appId: "1:695207212728:web:a9d6b289577680fb97264d",
+  measurementId: "G-9BJ4JQK900"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+  window.auth = getAuth(app);
+
+  signInAnonymously(auth).then((cred) => {
+    window.userId = cred.user.uid;
+  });
+</script>
+    
     <script src="script.js"></script>
 </body>
 </html>
