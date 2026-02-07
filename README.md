@@ -1,232 +1,198 @@
-# 📅 Calendário Colaborativo
+# 🎉 Nova Funcionalidade: Editar e Excluir Mensagens!
 
-Um calendário interativo onde qualquer pessoa pode preencher campos vazios com mensagens que ficam visíveis para todos os usuários.
+## ✨ O que mudou:
 
-## 🎯 Funcionalidades
-
-- ✅ Calendário mensal interativo
-- ✅ Campos de texto por dia
-- ✅ Apenas campos vazios podem ser preenchidos
-- ✅ Campos preenchidos ficam bloqueados
-- ✅ Armazenamento persistente no navegador
-- ✅ Interface responsiva (funciona em mobile)
-- ✅ Navegação entre meses
-
-## 🚀 Como Publicar Gratuitamente
-
-### Opção 1: GitHub Pages (Recomendado)
-
-#### Passo 1: Criar conta no GitHub
-1. Acesse [github.com](https://github.com)
-2. Clique em "Sign up" (Cadastrar-se)
-3. Preencha seus dados e confirme o email
-
-#### Passo 2: Criar um novo repositório
-1. Após fazer login, clique no botão "+" no canto superior direito
-2. Selecione "New repository"
-3. Configure:
-   - **Repository name:** `calendario-colaborativo` (ou qualquer nome)
-   - **Description:** "Calendário colaborativo interativo"
-   - Marque "Public"
-   - Marque "Add a README file"
-4. Clique em "Create repository"
-
-#### Passo 3: Fazer upload dos arquivos
-1. Na página do repositório, clique em "Add file" → "Upload files"
-2. Arraste os 3 arquivos do projeto:
-   - `index.html`
-   - `styles.css`
-   - `script.js`
-3. Escreva uma mensagem de commit (ex: "Adicionar calendário")
-4. Clique em "Commit changes"
-
-#### Passo 4: Ativar GitHub Pages
-1. No repositório, clique em "Settings" (Configurações)
-2. No menu lateral, clique em "Pages"
-3. Em "Source", selecione "main" (branch principal)
-4. Clique em "Save"
-5. Aguarde 1-2 minutos
-
-#### Passo 5: Acessar seu calendário
-- Seu site estará disponível em: `https://SEU-USUARIO.github.io/calendario-colaborativo`
-- Compartilhe este link com qualquer pessoa!
-
-### Opção 2: Netlify Drop
-
-#### Passo 1: Preparar os arquivos
-1. Coloque os 3 arquivos (`index.html`, `styles.css`, `script.js`) em uma pasta
-
-#### Passo 2: Fazer upload no Netlify
-1. Acesse [app.netlify.com/drop](https://app.netlify.com/drop)
-2. Arraste a pasta com os arquivos para a área indicada
-3. Aguarde o upload completar
-
-#### Passo 3: Acessar seu site
-- O Netlify gerará um link automático (ex: `https://nome-aleatorio.netlify.app`)
-- Você pode personalizar o nome nas configurações (opcional)
-
-### Opção 3: Vercel
-
-#### Passo 1: Criar conta
-1. Acesse [vercel.com](https://vercel.com)
-2. Cadastre-se (pode usar conta do GitHub)
-
-#### Passo 2: Fazer deploy
-1. Após login, clique em "Add New..." → "Project"
-2. Importe o repositório do GitHub (se usou GitHub)
-   OU
-   Use "Deploy from Git" e faça upload dos arquivos
-3. Clique em "Deploy"
-
-#### Passo 3: Acessar
-- Seu site estará em: `https://nome-do-projeto.vercel.app`
-
-## 📂 Estrutura dos Arquivos
-
-```
-calendario-colaborativo/
-│
-├── index.html      # Estrutura HTML da página
-├── styles.css      # Estilos e design responsivo
-└── script.js       # Lógica do calendário e armazenamento
-```
-
-## 💾 Como Funciona o Armazenamento
-
-O projeto usa **localStorage** do navegador:
-- Armazena dados de forma **permanente** no navegador
-- Cada usuário vê apenas suas próprias mensagens
-- **Não requer servidor** próprio
-- Funciona com hospedagem estática gratuita
-- Dados persistem mesmo após fechar o navegador
-
-### ⚠️ Importante: Limitação do localStorage
-
-Como o localStorage é **local ao navegador**, cada pessoa verá apenas as mensagens que ela mesma adicionou. Para ter um calendário **verdadeiramente colaborativo** (onde todos veem as mesmas mensagens), seria necessário:
-
-1. **Usar um backend** (Firebase, Supabase, etc.) - pode ter plano gratuito
-2. **Hospedar em plataforma que suporta armazenamento compartilhado**
-
-**Esta versão é perfeita para:**
-- ✅ Calendário pessoal
-- ✅ Diário individual
-- ✅ Planejamento pessoal
-- ✅ Demonstração do conceito
-
-**Para uso colaborativo real, considere:**
-- Integrar com Firebase Realtime Database (gratuito até 1GB)
-- Usar Supabase (tem plano gratuito)
-- Implementar backend próprio
-
-### Estrutura dos Dados
-
-```javascript
-{
-  "2024-02-15": {
-    "message": "Mensagem do usuário",
-    "timestamp": "2024-02-15T10:30:00.000Z"
-  },
-  "2024-02-16": {
-    "message": "Outra mensagem",
-    "timestamp": "2024-02-16T14:20:00.000Z"
-  }
-}
-```
-
-## 🔧 Personalização
-
-### Mudar cores principais
-No arquivo `styles.css`, localize:
-```css
-background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-```
-Altere `#667eea` e `#764ba2` para suas cores preferidas.
-
-### Mudar limite de caracteres
-No arquivo `script.js`, localize:
-```javascript
-maxlength="200"
-```
-E também:
-```javascript
-if (message.length > 200) {
-```
-Altere `200` para o valor desejado.
-
-### Mudar frequência de atualização
-No arquivo `script.js`, localize:
-```javascript
-setInterval(async () => {
-    await loadCalendarData();
-    renderCalendar();
-}, 30000); // 30000 = 30 segundos
-```
-Altere `30000` (valor em milissegundos).
-
-## 🎨 Características do Design
-
-- **Gradiente moderno** no fundo
-- **Animações suaves** em botões e cards
-- **Feedback visual** ao preencher campos
-- **Modal centralizado** para adicionar mensagens
-- **Contador de caracteres** em tempo real
-- **Loading overlay** durante operações
-- **Cores intuitivas:**
-  - Verde = preenchido
-  - Branco = disponível
-  - Cinza = outro mês
-
-## 📱 Responsividade
-
-O calendário se adapta automaticamente a:
-- 💻 Desktop (1200px+)
-- 📱 Tablet (768px - 1199px)
-- 📱 Mobile (até 767px)
-
-## ⚙️ Tecnologias Utilizadas
-
-- **HTML5** - Estrutura semântica
-- **CSS3** - Estilização moderna com Grid e Flexbox
-- **JavaScript (ES6+)** - Lógica e interatividade
-- **Storage API** - Persistência de dados compartilhada
-
-## 🔒 Segurança e Limitações
-
-### Proteções implementadas:
-- ✅ Campos preenchidos são bloqueados
-- ✅ Validação dupla antes de salvar
-- ✅ Limite de caracteres (200)
-- ✅ Sanitização de entrada
-
-### Limitações conhecidas:
-- ⚠️ Não há autenticação de usuários
-- ⚠️ Não é possível editar mensagens já salvas
-- ⚠️ Não há moderação de conteúdo
-- ⚠️ Limite de armazenamento (5MB por chave)
-
-## 🤝 Uso Colaborativo
-
-Este calendário é ideal para:
-- 📝 Diários coletivos
-- 🎉 Calendários de eventos comunitários
-- 💡 Murais de ideias
-- 📅 Agendas compartilhadas
-- 🎨 Projetos criativos colaborativos
-
-## 📞 Suporte
-
-Se encontrar algum problema:
-1. Verifique se todos os 3 arquivos estão no mesmo diretório
-2. Abra o Console do navegador (F12) para ver erros
-3. Certifique-se de que está usando HTTPS (não HTTP)
-4. Limpe o cache do navegador
-
-## 📄 Licença
-
-Este projeto é de código aberto e pode ser usado livremente para qualquer propósito.
+Agora você pode **editar** e **excluir** suas próprias mensagens!
 
 ---
 
-**Desenvolvido com ❤️ usando HTML, CSS e JavaScript puro**
+## 🎯 Como funciona:
 
-*Nenhuma biblioteca externa, nenhuma dependência, 100% gratuito!*
+### **Sistema de Identificação:**
+- Cada usuário recebe um **ID único** automaticamente
+- O ID fica salvo no navegador
+- Você só pode editar/excluir **suas próprias mensagens**
+
+### **Cores do Calendário:**
+- 🟢 **Verde** = Mensagens de outros usuários (não editáveis)
+- 🟠 **Laranja** = Suas mensagens (editáveis)
+- ⚪ **Branco** = Dias vazios (disponíveis)
+
+---
+
+## 📝 Como Usar:
+
+### **1. Adicionar mensagem (como antes):**
+- Clique em um dia vazio
+- Digite sua mensagem
+- Clique em "Salvar Mensagem"
+
+### **2. Editar sua mensagem:**
+- Passe o mouse sobre uma mensagem **laranja** (sua)
+- Aparecem os botões: **✏️ Editar** e **🗑️ Excluir**
+- Clique em **"Editar"**
+- Modifique o texto
+- Clique em **"Atualizar Mensagem"**
+- A mensagem terá um indicador **(editado)**
+
+### **3. Excluir sua mensagem:**
+- Passe o mouse sobre uma mensagem **laranja**
+- Clique em **"Excluir"**
+- Confirme a exclusão
+- O dia volta a ficar vazio
+
+---
+
+## 🔒 Regras de Segurança:
+
+✅ **Você PODE:**
+- Editar suas próprias mensagens quantas vezes quiser
+- Excluir suas próprias mensagens
+- Ver todas as mensagens (suas e de outros)
+
+❌ **Você NÃO PODE:**
+- Editar mensagens de outros usuários
+- Excluir mensagens de outros usuários
+- Alterar a data de uma mensagem
+
+---
+
+## 💾 Como o Sistema Identifica Você:
+
+1. **Na primeira visita:**
+   - O sistema gera um ID único para você
+   - Exemplo: `user_1707317234567_abc123xyz`
+   - Fica salvo no localStorage do seu navegador
+
+2. **Nas próximas visitas:**
+   - O sistema lê o mesmo ID
+   - Reconhece suas mensagens automaticamente
+   - Você pode editá-las livremente
+
+3. **⚠️ Importante:**
+   - Se limpar o cache/cookies do navegador, perde o ID
+   - Não conseguirá mais editar mensagens antigas
+   - Mas receberá um novo ID para novas mensagens
+
+---
+
+## 🎨 Indicadores Visuais:
+
+### **Mensagens de outros:**
+```
+┌──────────────────┐
+│ 15               │ ← Verde
+│ "Ótimo dia!"     │
+└──────────────────┘
+```
+
+### **Suas mensagens:**
+```
+┌──────────────────┐
+│ 20               │ ← Laranja
+│ "Meu aniversário"│
+│ [✏️ Editar] [🗑️ Excluir] │ ← Aparecem ao passar o mouse
+└──────────────────┘
+```
+
+---
+
+## 📱 Responsividade:
+
+**Desktop:**
+- Botões aparecem ao passar o mouse
+- Interface completa
+
+**Mobile:**
+- Toque na mensagem para ver os botões
+- Mesma funcionalidade
+
+---
+
+## 🔧 Arquivos Atualizados:
+
+Você precisa substituir **3 arquivos** no GitHub:
+
+1. ✅ **index.html** - Nova legenda e instruções
+2. ✅ **styles.css** - Estilos dos botões e cores
+3. ✅ **script.js** - Toda a lógica de edição/exclusão
+
+---
+
+## 🚀 Como Atualizar no GitHub:
+
+### **Opção 1: Substituir arquivo por arquivo**
+1. Vá no seu repositório
+2. Clique em cada arquivo (index.html, styles.css, script.js)
+3. Clique no lápis ✏️ (editar)
+4. Delete todo o conteúdo
+5. Cole o conteúdo do arquivo novo
+6. Commit changes
+
+### **Opção 2: Delete e refaça upload**
+1. Delete os 3 arquivos antigos
+2. Faça upload dos 3 novos
+3. Commit
+
+---
+
+## ✅ Testando:
+
+Após atualizar:
+
+1. Acesse seu calendário
+2. Adicione uma mensagem em um dia vazio
+3. A mensagem deve aparecer em **laranja**
+4. Passe o mouse sobre ela
+5. Deve ver os botões **✏️ Editar** e **🗑️ Excluir**
+6. Teste editar
+7. Teste excluir
+
+---
+
+## 🐛 Troubleshooting:
+
+### **Os botões não aparecem:**
+- Limpe o cache (Ctrl + Shift + R)
+- Verifique se os 3 arquivos foram atualizados
+
+### **Não consigo editar uma mensagem antiga:**
+- Você limpou o cache depois de criá-la?
+- O ID do usuário é diferente agora
+- Crie uma nova mensagem (será editável)
+
+### **Todas as mensagens estão verdes:**
+- Você não tem mensagens suas ainda
+- Adicione uma nova para testar
+
+---
+
+## 🎯 Vantagens:
+
+✅ Corrigir erros de digitação
+✅ Atualizar informações
+✅ Remover mensagens indesejadas
+✅ Manter o calendário limpo
+✅ Proteção: só você edita suas mensagens
+
+---
+
+## 📊 Exemplo Prático:
+
+```
+Você escreve: "Reunião as 10h"
+Depois percebe: "Era às 11h!"
+
+Solução:
+1. Passe o mouse na mensagem
+2. Clique em "✏️ Editar"
+3. Altere para "Reunião às 11h"
+4. Salve
+5. Pronto! Corrigido! ✅
+```
+
+---
+
+**Aproveite as novas funcionalidades! 🎉**
+
+*Se tiver dúvidas, é só perguntar!*
