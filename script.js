@@ -813,3 +813,30 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+// Detectar dispositivo móvel e ajustar interface
+function detectMobileAndAdjust() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        console.log('Dispositivo móvel detectado, aplicando ajustes...');
+        
+        // Adiciona classe ao body para estilos específicos
+        document.body.classList.add('is-mobile');
+        
+        // Aumenta tamanho da fonte se for muito pequeno
+        const baseFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        if (baseFontSize < 16) {
+            document.documentElement.style.fontSize = '16px';
+        }
+        
+        // Ajusta altura mínima para toque
+        document.querySelectorAll('.day-cell').forEach(cell => {
+            if (cell.classList.contains('empty')) {
+                cell.style.minHeight = '110px';
+            }
+        });
+    }
+}
+
+// Chame esta função após init()
+detectMobileAndAdjust();
