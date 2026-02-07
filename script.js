@@ -1333,125 +1333,161 @@ header h1 {
     margin-right: 5px;
 }
 
-/* ============================================
-   ESTILOS ESPECÍFICOS PARA MOBILE (GARANTIDOS)
-   ============================================ */
+// ============================================
+// CORREÇÃO DE EMERGÊNCIA PARA MOBILE
+// ============================================
 
-/* IMPORTANTE: Sem @media query - aplica sempre que a tela for menor */
-/* Usamos classes que serão adicionadas via JavaScript */
-
-.mobile-view .container {
-    padding: 15px;
+/**
+ * Função que GARANTE que tudo está visível no mobile
+ */
+function corrigirMobileEmergencia() {
+    const largura = window.innerWidth;
+    const isMobile = largura <= 768;
+    
+    console.log(`📱 Largura: ${largura}px, Mobile: ${isMobile}`);
+    
+    if (isMobile) {
+        console.log('🔧 Aplicando correções de emergência para mobile...');
+        
+        // 1. GARANTE que todos os números dos dias estão visíveis
+        const todosNumeros = document.querySelectorAll('.day-number');
+        console.log(`Encontrados ${todosNumeros.length} números de dias`);
+        
+        todosNumeros.forEach((numero, index) => {
+            // Aplica estilos INLINE para garantir visibilidade
+            numero.style.cssText = `
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                font-size: ${largura <= 480 ? '1rem' : '1.1rem'} !important;
+                font-weight: 700 !important;
+                color: #333 !important;
+                margin-bottom: 6px !important;
+            `;
+        });
+        
+        // 2. GARANTE que todas as mensagens estão visíveis
+        document.querySelectorAll('.day-message').forEach(mensagem => {
+            mensagem.style.cssText = `
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                font-size: ${largura <= 480 ? '0.8rem' : '0.85rem'} !important;
+                line-height: 1.3 !important;
+                color: #555 !important;
+                max-height: 60px !important;
+                overflow-y: auto !important;
+            `;
+        });
+        
+        // 3. GARANTE altura mínima das células
+        document.querySelectorAll('.day-cell').forEach(celula => {
+            const altura = largura <= 480 ? '95px' : '100px';
+            celula.style.minHeight = `${altura} !important`;
+            celula.style.padding = largura <= 480 ? '8px 4px !important' : '10px 6px !important';
+        });
+        
+        // 4. GARANTE que botões de ação estão visíveis
+        document.querySelectorAll('.message-actions').forEach(acoes => {
+            acoes.style.cssText = `
+                opacity: 1 !important;
+                display: flex !important;
+                gap: 5px !important;
+                margin-top: 8px !important;
+            `;
+        });
+        
+        // 5. Ajusta dias de outros meses (mantém visíveis mas com opacidade)
+        document.querySelectorAll('.day-cell.other-month .day-number').forEach(numero => {
+            numero.style.color = '#999 !important';
+            numero.style.opacity = '0.7 !important';
+        });
+        
+        console.log('✅ Correções de emergência aplicadas com sucesso!');
+    }
 }
 
-.mobile-view header h1 {
-    font-size: 1.6rem !important;
-    line-height: 1.3;
+/**
+ * Verifica e aplica correções periodicamente
+ */
+function monitorarEMobile() {
+    // Executa imediatamente
+    corrigirMobileEmergencia();
+    
+    // Executa após renderização do calendário
+    const renderOriginal = window.renderCalendar;
+    if (renderOriginal) {
+        window.renderCalendar = function() {
+            const resultado = renderOriginal.apply(this, arguments);
+            setTimeout(corrigirMobileEmergencia, 100);
+            return resultado;
+        };
+    }
+    
+    // Executa a cada 2 segundos por segurança (apenas em mobile)
+    if (window.innerWidth <= 768) {
+        setInterval(corrigirMobileEmergencia, 2000);
+    }
 }
 
-.mobile-view .subtitle {
-    font-size: 0.95rem !important;
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
+// Quando o DOM carregar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📋 DOM carregado - Iniciando correções mobile');
+        monitorarEMobile();
+        
+        // Aplica novamente após 1 segundo para garantir
+        setTimeout(corrigirMobileEmergencia, 1000);
+        setTimeout(corrigirMobileEmergencia, 2000);
+    });
+} else {
+    // Se o DOM já estiver carregado
+    console.log('📋 DOM já carregado - Aplicando correções mobile');
+    monitorarEMobile();
 }
 
-.mobile-view .controls {
-    flex-direction: column;
-}
+// Quando a janela for redimensionada
+window.addEventListener('resize', function() {
+    setTimeout(corrigirMobileEmergencia, 300);
+});
 
-.mobile-view #currentMonth {
-    order: -1;
-    margin-bottom: 15px;
-    font-size: 1.4rem !important;
-}
+// ============================================
+// FUNÇÃO DE TESTE PARA O CONSOLE
+// ============================================
 
-.mobile-view .btn-nav {
-    width: 100%;
-    padding: 14px;
-    font-size: 1rem !important;
-}
+window.testeMobile = function() {
+    console.log('🧪 Testando visibilidade mobile...');
+    console.log(`Largura: ${window.innerWidth}px`);
+    
+    const numeros = document.querySelectorAll('.day-number');
+    const mensagens = document.querySelectorAll('.day-message');
+    const celulas = document.querySelectorAll('.day-cell');
+    
+    console.log(`✅ ${numeros.length} números de dias`);
+    console.log(`✅ ${mensagens.length} mensagens`);
+    console.log(`✅ ${celulas.length} células`);
+    
+    // Testa se estão visíveis
+    numeros.forEach((num, i) => {
+        const estilo = window.getComputedStyle(num);
+        if (estilo.display === 'none' || estilo.visibility === 'hidden' || estilo.opacity === '0') {
+            console.warn(`⚠️ Número ${i+1} NÃO está visível!`);
+            console.warn(`   display: ${estilo.display}, visibility: ${estilo.visibility}, opacity: ${estilo.opacity}`);
+        }
+    });
+    
+    // Aplica correção de emergência
+    corrigirMobileEmergencia();
+    console.log('✅ Teste completo - Correções aplicadas');
+};
 
-.mobile-view .legend {
-    flex-direction: column;
-    gap: 10px;
-    align-items: flex-start;
-    margin-bottom: 20px;
-}
-
-.mobile-view .calendar {
-    gap: 6px;
-}
-
-.mobile-view .day-header {
-    padding: 12px 3px;
-    font-size: 0.85rem !important;
-}
-
-.mobile-view .day-cell {
-    min-height: 100px !important;
-    padding: 10px 6px;
-}
-
-.mobile-view .day-number {
-    font-size: 1rem !important;
-    margin-bottom: 6px;
-}
-
-.mobile-view .day-message {
-    font-size: 0.85rem !important;
-    line-height: 1.3;
-}
-
-.mobile-view .empty-state {
-    font-size: 0.85rem !important;
-}
-
-/* Botões sempre visíveis em mobile */
-.mobile-view .message-actions {
-    opacity: 1 !important;
-    display: flex !important;
-    margin-top: 8px;
-}
-
-.mobile-view .btn-edit,
-.mobile-view .btn-delete {
-    font-size: 0.75rem !important;
-    padding: 5px 8px;
-}
-
-.mobile-view .info {
-    font-size: 0.9rem;
-    padding: 15px;
-}
-
-.mobile-view .info li {
-    font-size: 0.85rem;
-}
-
-/* Modal em mobile */
-.mobile-view .modal-content {
-    margin: 5% auto;
-    padding: 20px;
-    width: 95%;
-}
-
-.mobile-view .modal-content h3 {
-    font-size: 1.2rem;
-}
-
-.mobile-view #messageInput {
-    font-size: 16px !important; /* Evita zoom no iOS */
-    min-height: 100px;
-}
-
-/* Pequenos ajustes para telas muito pequenas */
-.small-mobile-view .day-cell {
-    min-height: 90px !important;
-    padding: 8px 4px;
-}
-
-.small-mobile-view .day-message {
-    font-size: 0.8rem !important;
-}
-
-.small-mobile-view .day-number {
-    font-size: 0.95rem !important;
-}
+// Comando rápido para forçar correção
+window.arrumarMobile = function() {
+    console.log('🔨 Forçando correção mobile...');
+    corrigirMobileEmergencia();
+    alert('Correção mobile aplicada! Verifique se as datas estão visíveis.');
+};
