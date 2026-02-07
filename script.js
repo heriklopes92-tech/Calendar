@@ -92,146 +92,61 @@ function waitForAuth() {
 /**
  * Configura o listener em tempo real do Firestore
  */
+/**
+ * Configura o listener em tempo real do Firestore (VERSÃO SIMPLIFICADA)
+ */
 function setupRealtimeListener() {
     try {
-        console.log('Configurando listener do Firestore...');
+        console.log('Configurando listener simplificado...');
         
         // Limpa dados locais
         calendarData = {};
         
-        // Usa collection() do Firestore corretamente
-        // IMPORTANTE: window.firestore é um objeto que contém as funções, não tem método collection()
-        const calendarRef = window.firestore.collection(window.db, 'calendar');
+        // Método mais direto - verifique se estas funções existem
+        const { collection, onSnapshot } = window.firestore;
+        const { db } = window;
         
-        // Escuta todas as mudanças na coleção 'calendar'
-        unsubscribeListener = window.firestore.onSnapshot(
-            calendarRef,
-            (snapshot) => {
-                console.log('Dados recebidos do Firestore:', snapshot.docs.length, 'documentos');
-                
-                snapshot.docChanges().forEach((change) => {
-                    const data = change.doc.data();
-                    const dayKey = change.doc.id;
-                    
-                    console.log('Mudança detectada:', change.type, 'para', dayKey, data);
-                    
-                    if (change.type === 'added' || change.type === 'modified') {
-                        // Adiciona ou atualiza no cache local
-                        calendarData[dayKey] = {
-                            message: data.message,
-                            timestamp: data.timestamp,
-                            userId: data.userId,
-                            edited: data.edited || false
-                        };
-                    } else if (change.type === 'removed') {
-                        // Remove do cache local
-                        delete calendarData[dayKey];
-                    }
-                });
-                
-                // Renderiza o calendário com os novos dados
-                renderCalendar();
-                hideLoading();
-            },
-            (error) => {
-                console.error('Erro no listener do Firestore:', error);
-                showError('Erro na conexão em tempo real.');
-                hideLoading();
-            }
-        );
+        if (!collection || !onSnapshot || !db) {
+            throw new Error('Firestore não está disponível corretamente');
+        }
         
-        console.log('Listener do Firestore configurado');
-        return true;
-    } catch (error) {
-        console.error('Erro ao configurar listener:', error);
-        showError('Erro ao configurar conexão em tempo real.');
-        return false;
-    }
-}
-
-/**
- * Salva uma mensagem no Firestore
- */
-async function saveMessageToFirestore(year, month, day, message, isEdit = false) {
-    try {
-        showLoading();
+        // Referência à coleção 'calendar'
+        const calendarRef = collection(db, 'calendar');
         
-        const dayKey = getDayKey(year, month, day);
-        const timestamp = new Date().toISOString();
-        
-        const messageData = {
-            message: message.trim(),
-            timestamp: timestamp,
-            userId: userId,
-            edited: isEdit
-        };
-        
-        const docRef = window.firestore.doc(window.db, 'calendar', dayKey);
-        
-        if (isEdit) {
-            // Atualiza mensagem existente
-            await window.firestore.setDoc(docRef, messageData);
-            console.log('Mensagem atualizada no Firestore:', dayKey);
-        } else {
-            // Verifica se já existe
-            const docSnap = await window.firestore.getDoc(docRef);
+        // Escuta mudanças
+        unsubscribeListener = onSnapshot(calendarRef, (snapshot) => {
+            console.log('Snapshot recebido:', snapshot.size, 'docs');
             
-            if (docSnap.exists()) {
-                throw new Error('Este dia já foi preenchido por outro usuário!');
-            }
+            // Limpa dados anteriores
+            calendarData = {};
             
-            // Cria nova mensagem
-            await window.firestore.setDoc(docRef, messageData);
-            console.log('Mensagem salva no Firestore:', dayKey);
-        }
-        
-        return true;
-    } catch (error) {
-        console.error('Erro ao salvar no Firestore:', error);
-        alert(error.message || 'Erro ao salvar a mensagem. Por favor, tente novamente.');
-        return false;
-    } finally {
-        hideLoading();
-    }
-}
-
-/**
- * Remove uma mensagem do Firestore
- */
-async function deleteMessageFromFirestore(year, month, day) {
-    try {
-        showLoading();
-        
-        const dayKey = getDayKey(year, month, day);
-        const docRef = window.firestore.doc(window.db, 'calendar', dayKey);
-        const docSnap = await window.firestore.getDoc(docRef);
-        
-        if (!docSnap.exists()) {
-            throw new Error('Mensagem não encontrada!');
-        }
-        
-        const data = docSnap.data();
-        
-        // Verifica se é o autor
-        if (data.userId !== userId) {
-            throw new Error('Você só pode excluir suas próprias mensagens!');
-        }
-        
-        // Confirma a exclusão
-        if (!confirm('Tem certeza que deseja excluir esta mensagem?')) {
+            // Processa todos os documentos
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                calendarData[doc.id] = {
+                    message: data.message,
+                    timestamp: data.timestamp,
+                    userId: data.userId,
+                    edited: data.edited || false
+                };
+            });
+            
+            // Atualiza a interface
+            renderCalendar();
             hideLoading();
-            return false;
-        }
+        }, (error) => {
+            console.error('Erro no listener:', error);
+            showError('Erro na conexão. Usando modo offline.');
+            hideLoading();
+        });
         
-        await window.firestore.deleteDoc(docRef);
-        console.log('Mensagem excluída do Firestore:', dayKey);
+        console.log('Listener configurado com sucesso');
         return true;
     } catch (error) {
-        console.error('Erro ao excluir do Firestore:', error);
-        alert(error.message || 'Erro ao excluir a mensagem.');
-        return false;
-    } finally {
+        console.error('Erro fatal no listener:', error);
+        showError('Não foi possível conectar ao servidor. O calendário funcionará em modo offline.');
         hideLoading();
+        return false;
     }
 }
 
