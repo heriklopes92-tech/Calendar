@@ -1,55 +1,86 @@
 // ============================================
-// FUNÇÕES DE NAVEGAÇÃO E UTILITÁRIAS
+// CONFIGURAÇÃO E VARIÁVEIS GLOBAIS
+// ============================================
+
+// Data atual do calendário (mês/ano sendo visualizado)
+let currentDate = new Date();
+
+// Armazena os dados do calendário em memória
+let calendarData = {};
+
+// ID do usuário
+let userId = null;
+
+// Modo de operação: 'firebase' ou 'local'
+let operationMode = 'local';
+
+// Referência do Firestore
+let unsubscribeListener = null;
+
+// Variável para armazenar o dia selecionado
+let selectedDay = null;
+
+// ============================================
+// EXIBIÇÃO DE AVISOS
 // ============================================
 
 /**
- * Vai para o mês anterior
+ * Exibe uma mensagem de aviso
  */
-function previousMonth() {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar();
-    corrigirMobileEmergencia(); // Aplica correções mobile
-}
-
-/**
- * Vai para o próximo mês
- */
-function nextMonth() {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar();
-    corrigirMobileEmergencia(); // Aplica correções mobile
-}
-
-/**
- * Mostra overlay de carregamento
- */
-function showLoading() {
-    loadingOverlay.classList.add('active');
-}
-
-/**
- * Esconde overlay de carregamento
- */
-function hideLoading() {
-    loadingOverlay.classList.remove('active');
-}
-
-/**
- * Atualiza contador de caracteres
- */
-function updateCharCount() {
-    const length = messageInput.value.length;
-    charCount.textContent = length;
-    charCount.style.color = length > 200 ? 'red' : '#666';
+function showWarning(message) {
+    console.warn(message);
+    
+    // Remove notificação anterior se existir
+    const oldNotification = document.getElementById('temp-notification');
+    if (oldNotification) {
+        oldNotification.remove();
+    }
+    
+    // Cria nova notificação
+    const notification = document.createElement('div');
+    notification.id = 'temp-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: #FF9800;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Remove após 5 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 5000);
 }
 
 // ============================================
-// EVENT LISTENERS
+// CONFIGURAÇÃO DE EVENT LISTENERS
 // ============================================
 
-// Configura os event listeners quando o DOM estiver pronto
+/**
+ * Configura todos os event listeners
+ */
 function setupEventListeners() {
     console.log('Configurando event listeners...');
+    
+    // Tenta obter referências aos elementos DOM
+    const prevMonthBtn = document.getElementById('prevMonth');
+    const nextMonthBtn = document.getElementById('nextMonth');
+    const closeModal = document.querySelector('.close');
+    const saveMessageBtn = document.getElementById('saveMessage');
+    const messageInput = document.getElementById('messageInput');
+    const modal = document.getElementById('modal');
     
     // Verifica se os elementos existem antes de adicionar listeners
     if (prevMonthBtn) {
@@ -106,12 +137,117 @@ function setupEventListeners() {
 }
 
 // ============================================
+// MONITORAMENTO E CORREÇÕES PARA MOBILE
+// ============================================
+
+/**
+ * Função que GARANTE que tudo está visível no mobile
+ */
+function corrigirMobileEmergencia() {
+    const largura = window.innerWidth;
+    const isMobile = largura <= 768;
+    
+    console.log(`📱 Largura: ${largura}px, Mobile: ${isMobile}`);
+    
+    if (isMobile) {
+        console.log('🔧 Aplicando correções de emergência para mobile...');
+        
+        // 1. GARANTE que todos os números dos dias estão visíveis
+        const todosNumeros = document.querySelectorAll('.day-number');
+        console.log(`Encontrados ${todosNumeros.length} números de dias`);
+        
+        todosNumeros.forEach((numero, index) => {
+            // Aplica estilos INLINE para garantir visibilidade
+            numero.style.cssText = `
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                font-size: ${largura <= 480 ? '1rem' : '1.1rem'} !important;
+                font-weight: 700 !important;
+                color: #333 !important;
+                margin-bottom: 6px !important;
+            `;
+        });
+        
+        // 2. GARANTE que todas as mensagens estão visíveis
+        document.querySelectorAll('.day-message').forEach(mensagem => {
+            mensagem.style.cssText = `
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                font-size: ${largura <= 480 ? '0.8rem' : '0.85rem'} !important;
+                line-height: 1.3 !important;
+                color: #555 !important;
+                max-height: 60px !important;
+                overflow-y: auto !important;
+            `;
+        });
+        
+        // 3. GARANTE altura mínima das células
+        document.querySelectorAll('.day-cell').forEach(celula => {
+            const altura = largura <= 480 ? '95px' : '100px';
+            celula.style.minHeight = `${altura} !important`;
+            celula.style.padding = largura <= 480 ? '8px 4px !important' : '10px 6px !important';
+        });
+        
+        // 4. GARANTE que botões de ação estão visíveis
+        document.querySelectorAll('.message-actions').forEach(acoes => {
+            acoes.style.cssText = `
+                opacity: 1 !important;
+                display: flex !important;
+                gap: 5px !important;
+                margin-top: 8px !important;
+            `;
+        });
+        
+        // 5. Ajusta dias de outros meses (mantém visíveis mas com opacidade)
+        document.querySelectorAll('.day-cell.other-month .day-number').forEach(numero => {
+            numero.style.color = '#999 !important';
+            numero.style.opacity = '0.7 !important';
+        });
+        
+        console.log('✅ Correções de emergência aplicadas com sucesso!');
+    }
+}
+
+/**
+ * Verifica e aplica correções periodicamente
+ */
+function monitorarEMobile() {
+    console.log('📱 Iniciando monitoramento mobile...');
+    
+    // Executa imediatamente
+    corrigirMobileEmergencia();
+    
+    // Executa após renderização do calendário
+    const renderOriginal = window.renderCalendar;
+    if (renderOriginal) {
+        window.renderCalendar = function() {
+            const resultado = renderOriginal.apply(this, arguments);
+            setTimeout(corrigirMobileEmergencia, 100);
+            return resultado;
+        };
+    }
+    
+    // Executa a cada 2 segundos por segurança (apenas em mobile)
+    if (window.innerWidth <= 768) {
+        console.log('📱 Agendando verificações periódicas para mobile...');
+        setInterval(corrigirMobileEmergencia, 2000);
+    }
+}
+
+// ============================================
 // INICIALIZAÇÃO
 // ============================================
 
 async function init() {
     console.log('Iniciando Calendário Colaborativo...');
-    showLoading();
+    
+    // Primeiro, mostra loading
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('active');
+    }
     
     try {
         // Configura os event listeners primeiro
@@ -132,24 +268,38 @@ async function init() {
             console.log('ID do usuário local criado:', userId);
         }
         
-        // Renderiza o calendário
-        renderCalendar();
+        // Obtém referência ao calendário
+        const calendarElement = document.getElementById('calendar');
+        if (calendarElement) {
+            renderCalendar();
+        } else {
+            console.error('❌ Elemento calendar não encontrado');
+        }
+        
         updateModeIndicator();
         
         // Aplica correções para mobile
         setTimeout(corrigirMobileEmergencia, 100);
         setTimeout(corrigirMobileEmergencia, 500);
         
-        console.log('Calendário pronto! Modo:', operationMode);
+        console.log('✅ Calendário pronto! Modo:', operationMode);
     } catch (error) {
         console.error('Erro na inicialização:', error);
         showWarning('Erro ao inicializar. Usando modo local.');
         operationMode = 'local';
         loadSavedData();
-        renderCalendar();
+        
+        const calendarElement = document.getElementById('calendar');
+        if (calendarElement) {
+            renderCalendar();
+        }
         updateModeIndicator();
     } finally {
-        hideLoading();
+        // Esconde loading
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.classList.remove('active');
+        }
     }
 }
 
@@ -172,24 +322,8 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Inicia quando a página carregar
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM completamente carregado - Iniciando aplicação');
-        init();
-        
-        // Configura correções mobile
-        monitorarEMobile();
-    });
-} else {
-    // Se o DOM já estiver carregado
-    console.log('DOM já carregado - Iniciando aplicação');
-    init();
-    monitorarEMobile();
-}
-
 // ============================================
-// FUNÇÃO DE TESTE PARA O CONSOLE
+// FUNÇÕES DE TESTE E DEPURAÇÃO
 // ============================================
 
 window.testeMobile = function() {
@@ -218,38 +352,56 @@ window.testeMobile = function() {
     console.log('✅ Teste completo - Correções aplicadas');
 };
 
-// Comando rápido para forçar correção
 window.arrumarMobile = function() {
     console.log('🔨 Forçando correção mobile...');
     corrigirMobileEmergencia();
     alert('Correção mobile aplicada! Verifique se as datas estão visíveis.');
 };
 
-// Comando para verificar listeners
 window.verificarListeners = function() {
     console.log('🔍 Verificando event listeners...');
-    console.log('prevMonthBtn listeners:', prevMonthBtn ? getEventListeners(prevMonthBtn) : 'Não encontrado');
-    console.log('nextMonthBtn listeners:', nextMonthBtn ? getEventListeners(nextMonthBtn) : 'Não encontrado');
     
-    // Função auxiliar para obter listeners
-    function getEventListeners(element) {
-        const listeners = [];
-        const types = ['click', 'mouseover', 'mouseout', 'keydown', 'keyup'];
-        
-        types.forEach(type => {
-            const listener = element[`on${type}`];
-            if (listener) {
-                listeners.push(`${type}: ${listener.toString()}`);
-            }
-        });
-        
-        return listeners.length > 0 ? listeners : 'Nenhum listener direto encontrado';
+    const prevMonthBtn = document.getElementById('prevMonth');
+    const nextMonthBtn = document.getElementById('nextMonth');
+    
+    if (prevMonthBtn) {
+        console.log('prevMonthBtn encontrado, verificando listeners...');
+    } else {
+        console.error('prevMonthBtn não encontrado');
+    }
+    
+    if (nextMonthBtn) {
+        console.log('nextMonthBtn encontrado, verificando listeners...');
+    } else {
+        console.error('nextMonthBtn não encontrado');
     }
 };
 
-// Comando para forçar renderização
 window.recarregarCalendario = function() {
     console.log('🔄 Recarregando calendário...');
     renderCalendar();
     corrigirMobileEmergencia();
 };
+
+// ============================================
+// EXECUÇÃO INICIAL
+// ============================================
+
+// Verifica se estamos no navegador
+if (typeof window !== 'undefined') {
+    // Inicia quando a página carregar
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM completamente carregado - Iniciando aplicação');
+            init();
+            monitorarEMobile();
+        });
+    } else {
+        // Se o DOM já estiver carregado
+        console.log('DOM já carregado - Iniciando aplicação');
+        init();
+        monitorarEMobile();
+    }
+} else {
+    console.error('Este script deve ser executado em um navegador');
+}
