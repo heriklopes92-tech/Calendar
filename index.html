@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendário Colaborativo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📅 Calendário Colaborativo</h1>
+            <p class="subtitle">Preencha os campos vazios e contribua com a comunidade!</p>
+        </header>
+
+        <div class="controls">
+            <button id="prevMonth" class="btn-nav">← Mês Anterior</button>
+            <h2 id="currentMonth"></h2>
+            <button id="nextMonth" class="btn-nav">Próximo Mês →</button>
+        </div>
+
+        <div class="legend">
+            <span class="legend-item">
+                <span class="box available"></span> Disponível para preencher
+            </span>
+            <span class="legend-item">
+                <span class="box filled"></span> Já preenchido
+            </span>
+        </div>
+
+        <div id="calendar" class="calendar"></div>
+
+        <div class="info">
+            <p>💡 <strong>Como funciona:</strong></p>
+            <ul>
+                <li>Clique em um dia vazio para adicionar sua mensagem</li>
+                <li>Uma vez preenchido, o campo fica bloqueado</li>
+                <li>Todos podem ver as mensagens de todos</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar mensagem -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Adicionar mensagem para <span id="modalDate"></span></h3>
+            <textarea id="messageInput" placeholder="Digite sua mensagem aqui..." maxlength="200"></textarea>
+            <div class="char-counter">
+                <span id="charCount">0</span>/200 caracteres
+            </div>
+            <button id="saveMessage" class="btn-save">Salvar Mensagem</button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Carregando dados...</p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
