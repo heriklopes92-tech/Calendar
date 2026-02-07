@@ -577,25 +577,28 @@ function closeModalWindow() {
 
 async function saveMessageHandler() {
     if (!selectedDay) return;
-    
+
     const message = messageInput.value.trim();
-    
+
     if (!message) {
         alert('Por favor, digite uma mensagem!');
         return;
     }
-    
+
     if (message.length > 200) {
         alert('A mensagem deve ter no máximo 200 caracteres!');
         return;
     }
-    
+
+    // 🔹 DECLARA FORA DO IF
+    let originalText = '';
+
     if (saveMessageBtn) {
         saveMessageBtn.disabled = true;
-        const originalText = saveMessageBtn.textContent;
+        originalText = saveMessageBtn.textContent;
         saveMessageBtn.textContent = 'Salvando...';
     }
-    
+
     const success = await saveMessage(
         selectedDay.year,
         selectedDay.month,
@@ -603,12 +606,12 @@ async function saveMessageHandler() {
         message,
         selectedDay.isEdit
     );
-    
+
     if (saveMessageBtn) {
         saveMessageBtn.disabled = false;
         saveMessageBtn.textContent = originalText;
     }
-    
+
     if (success) {
         closeModalWindow();
         renderCalendar();
