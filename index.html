@@ -84,7 +84,7 @@
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
-  window.auth = getAuth(app);
+  //window.auth = getAuth(app);
 
   signInAnonymously(auth).then((cred) => {
     window.userId = cred.user.uid;
