@@ -25,22 +25,22 @@ const loadingOverlay = document.getElementById('loadingOverlay');
 let selectedDay = null;
 
 // ============================================
-// FUNÇÕES DE ARMAZENAMENTO (STORAGE API)
+// FUNÇÕES DE ARMAZENAMENTO (LOCALSTORAGE)
 // ============================================
 
 /**
- * Carrega os dados do calendário do armazenamento compartilhado
- * Usa a API window.storage para persistência entre usuários
+ * Carrega os dados do calendário do localStorage
+ * Dados ficam salvos no navegador de cada usuário
  */
 async function loadCalendarData() {
     showLoading(true);
     try {
-        // Tenta carregar os dados compartilhados
-        const result = await window.storage.get('calendar-data', true);
+        // Tenta carregar os dados do localStorage
+        const savedData = localStorage.getItem('calendar-data');
         
-        if (result && result.value) {
+        if (savedData) {
             // Parse dos dados JSON armazenados
-            calendarData = JSON.parse(result.value);
+            calendarData = JSON.parse(savedData);
             console.log('Dados carregados:', Object.keys(calendarData).length, 'entradas');
         } else {
             // Se não houver dados, inicia com objeto vazio
@@ -48,8 +48,8 @@ async function loadCalendarData() {
             console.log('Nenhum dado encontrado, iniciando calendário vazio');
         }
     } catch (error) {
-        // Se houver erro (ex: chave não existe), inicia vazio
-        console.log('Iniciando novo calendário:', error.message);
+        // Se houver erro no parse, inicia vazio
+        console.log('Erro ao carregar dados:', error.message);
         calendarData = {};
     } finally {
         showLoading(false);
@@ -57,14 +57,14 @@ async function loadCalendarData() {
 }
 
 /**
- * Salva os dados do calendário no armazenamento compartilhado
- * Dados são compartilhados entre todos os usuários
+ * Salva os dados do calendário no localStorage
+ * Dados ficam salvos no navegador de cada usuário
  */
 async function saveCalendarData() {
     showLoading(true);
     try {
-        // Salva como JSON no armazenamento compartilhado (shared: true)
-        await window.storage.set('calendar-data', JSON.stringify(calendarData), true);
+        // Salva como JSON no localStorage
+        localStorage.setItem('calendar-data', JSON.stringify(calendarData));
         console.log('Dados salvos com sucesso');
         return true;
     } catch (error) {
@@ -437,9 +437,3 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
-
-// Recarrega dados a cada 30 segundos para ver atualizações de outros usuários
-setInterval(async () => {
-    await loadCalendarData();
-    renderCalendar();
-}, 30000);

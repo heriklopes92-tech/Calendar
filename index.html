@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendário Colaborativo</title>
+    <title>Calendário Colaborativo - Firebase</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,6 +11,7 @@
         <header>
             <h1>📅 Calendário Colaborativo</h1>
             <p class="subtitle">Preencha os campos vazios e contribua com a comunidade!</p>
+            <p class="firebase-info">🔥 Versão com Firebase - Dados compartilhados em tempo real!</p>
         </header>
 
         <div class="controls">
@@ -35,7 +36,7 @@
             <ul>
                 <li>Clique em um dia vazio para adicionar sua mensagem</li>
                 <li>Uma vez preenchido, o campo fica bloqueado</li>
-                <li>Todos podem ver as mensagens de todos</li>
+                <li>Todos podem ver as mensagens de todos em tempo real!</li>
             </ul>
         </div>
     </div>
@@ -58,6 +59,324 @@
         <p>Carregando dados...</p>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Importar Firebase
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // ==================================================
+        // CONFIGURAÇÃO DO FIREBASE
+        // ==================================================
+        // SUBSTITUA com suas credenciais do Firebase
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            databaseURL: "https://SEU_PROJETO.firebaseio.com",
+            projectId: "SEU_PROJETO",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "SEU_ID",
+            appId: "SEU_APP_ID"
+        };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // ==================================================
+        // VARIÁVEIS GLOBAIS
+        // ==================================================
+        let currentDate = new Date();
+        let calendarData = {};
+
+        const calendarElement = document.getElementById('calendar');
+        const currentMonthElement = document.getElementById('currentMonth');
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        const modal = document.getElementById('modal');
+        const modalDateElement = document.getElementById('modalDate');
+        const messageInput = document.getElementById('messageInput');
+        const saveMessageBtn = document.getElementById('saveMessage');
+        const closeModalBtn = document.querySelector('.close');
+        const charCount = document.getElementById('charCount');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        let selectedDay = null;
+
+        // ==================================================
+        // FUNÇÕES DE ARMAZENAMENTO (FIREBASE)
+        // ==================================================
+
+        function showLoading(show) {
+            if (show) {
+                loadingOverlay.classList.add('active');
+            } else {
+                loadingOverlay.classList.remove('active');
+            }
+        }
+
+        async function loadCalendarData() {
+            showLoading(true);
+            try {
+                const dbRef = ref(database, 'calendar');
+                const snapshot = await get(dbRef);
+                
+                if (snapshot.exists()) {
+                    calendarData = snapshot.val();
+                    console.log('Dados carregados:', Object.keys(calendarData).length, 'entradas');
+                } else {
+                    calendarData = {};
+                    console.log('Nenhum dado encontrado');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar:', error);
+                calendarData = {};
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function saveMessage(year, month, day, message) {
+            const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            
+            try {
+                showLoading(true);
+                const messageRef = ref(database, `calendar/${key}`);
+                await set(messageRef, {
+                    message: message.trim(),
+                    timestamp: new Date().toISOString()
+                });
+                console.log('Mensagem salva com sucesso');
+                return true;
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                alert('Erro ao salvar a mensagem. Por favor, tente novamente.');
+                return false;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Listener para atualizações em tempo real
+        function setupRealtimeListener() {
+            const dbRef = ref(database, 'calendar');
+            onValue(dbRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    calendarData = snapshot.val();
+                    renderCalendar();
+                    console.log('Dados atualizados em tempo real');
+                }
+            });
+        }
+
+        // ==================================================
+        // FUNÇÕES AUXILIARES
+        // ==================================================
+
+        function getDayKey(year, month, day) {
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+
+        function hasMessage(year, month, day) {
+            const key = getDayKey(year, month, day);
+            return calendarData[key] !== undefined;
+        }
+
+        function getMessage(year, month, day) {
+            const key = getDayKey(year, month, day);
+            return calendarData[key] || null;
+        }
+
+        // ==================================================
+        // FUNÇÕES DE RENDERIZAÇÃO
+        // ==================================================
+
+        function renderCalendar() {
+            calendarElement.innerHTML = '';
+            
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            updateMonthTitle(year, month);
+            renderWeekHeader();
+            renderDays(year, month);
+        }
+
+        function updateMonthTitle(year, month) {
+            const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            currentMonthElement.textContent = `${monthNames[month]} ${year}`;
+        }
+
+        function renderWeekHeader() {
+            const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            weekDays.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.textContent = day;
+                calendarElement.appendChild(dayHeader);
+            });
+        }
+
+        function renderDays(year, month) {
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const prevLastDate = new Date(year, month, 0).getDate();
+            
+            for (let i = firstDay - 1; i >= 0; i--) {
+                renderDayCell(year, month - 1, prevLastDate - i, true);
+            }
+            
+            for (let day = 1; day <= lastDate; day++) {
+                renderDayCell(year, month, day, false);
+            }
+            
+            const totalCells = calendarElement.children.length - 7;
+            const remainingCells = 35 - totalCells;
+            
+            for (let day = 1; day <= remainingCells; day++) {
+                renderDayCell(year, month + 1, day, true);
+            }
+        }
+
+        function renderDayCell(year, month, day, isOtherMonth) {
+            const dayCell = document.createElement('div');
+            dayCell.className = 'day-cell';
+            
+            if (isOtherMonth) {
+                dayCell.classList.add('other-month');
+            }
+            
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'day-number';
+            dayNumber.textContent = day;
+            dayCell.appendChild(dayNumber);
+            
+            const messageData = getMessage(year, month, day);
+            
+            if (messageData) {
+                dayCell.classList.add('filled');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'day-message';
+                messageDiv.textContent = messageData.message;
+                dayCell.appendChild(messageDiv);
+            } else if (!isOtherMonth) {
+                dayCell.classList.add('empty');
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.textContent = 'Clique para adicionar';
+                dayCell.appendChild(emptyState);
+                dayCell.addEventListener('click', () => openModal(year, month, day));
+            }
+            
+            calendarElement.appendChild(dayCell);
+        }
+
+        // ==================================================
+        // MODAL
+        // ==================================================
+
+        function openModal(year, month, day) {
+            if (hasMessage(year, month, day)) {
+                alert('Este dia já foi preenchido!');
+                return;
+            }
+            
+            selectedDay = { year, month, day };
+            const dateStr = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+            modalDateElement.textContent = dateStr;
+            messageInput.value = '';
+            charCount.textContent = '0';
+            modal.style.display = 'block';
+            messageInput.focus();
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            selectedDay = null;
+        }
+
+        async function handleSaveMessage() {
+            if (!selectedDay) return;
+            
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                alert('Por favor, digite uma mensagem!');
+                return;
+            }
+            
+            if (message.length > 200) {
+                alert('A mensagem deve ter no máximo 200 caracteres!');
+                return;
+            }
+            
+            saveMessageBtn.disabled = true;
+            saveMessageBtn.textContent = 'Salvando...';
+            
+            const success = await saveMessage(selectedDay.year, selectedDay.month, selectedDay.day, message);
+            
+            saveMessageBtn.disabled = false;
+            saveMessageBtn.textContent = 'Salvar Mensagem';
+            
+            if (success) {
+                closeModal();
+            }
+        }
+
+        // ==================================================
+        // NAVEGAÇÃO
+        // ==================================================
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        }
+
+        function updateCharCount() {
+            const length = messageInput.value.length;
+            charCount.textContent = length;
+            charCount.style.color = length > 200 ? 'red' : '#666';
+        }
+
+        // ==================================================
+        // EVENT LISTENERS
+        // ==================================================
+
+        prevMonthBtn.addEventListener('click', previousMonth);
+        nextMonthBtn.addEventListener('click', nextMonth);
+        closeModalBtn.addEventListener('click', closeModal);
+        saveMessageBtn.addEventListener('click', handleSaveMessage);
+        messageInput.addEventListener('input', updateCharCount);
+
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) closeModal();
+        });
+
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.ctrlKey && event.key === 'Enter') {
+                handleSaveMessage();
+            }
+        });
+
+        // ==================================================
+        // INICIALIZAÇÃO
+        // ==================================================
+
+        async function init() {
+            console.log('Iniciando Calendário Colaborativo com Firebase...');
+            await loadCalendarData();
+            setupRealtimeListener();
+            renderCalendar();
+            console.log('Calendário pronto!');
+        }
+
+        init();
+    </script>
 </body>
 </html>

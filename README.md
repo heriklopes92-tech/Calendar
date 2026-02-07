@@ -8,11 +8,9 @@ Um calendário interativo onde qualquer pessoa pode preencher campos vazios com 
 - ✅ Campos de texto por dia
 - ✅ Apenas campos vazios podem ser preenchidos
 - ✅ Campos preenchidos ficam bloqueados
-- ✅ Mensagens visíveis para todos os usuários
-- ✅ Armazenamento persistente e compartilhado
+- ✅ Armazenamento persistente no navegador
 - ✅ Interface responsiva (funciona em mobile)
 - ✅ Navegação entre meses
-- ✅ Atualização automática a cada 30 segundos
 
 ## 🚀 Como Publicar Gratuitamente
 
@@ -95,12 +93,30 @@ calendario-colaborativo/
 
 ## 💾 Como Funciona o Armazenamento
 
-O projeto usa a **API de Storage do Claude** que:
-- Armazena dados de forma **permanente**
-- **Compartilha** dados entre todos os usuários
+O projeto usa **localStorage** do navegador:
+- Armazena dados de forma **permanente** no navegador
+- Cada usuário vê apenas suas próprias mensagens
 - **Não requer servidor** próprio
 - Funciona com hospedagem estática gratuita
-- Atualiza automaticamente a cada 30 segundos
+- Dados persistem mesmo após fechar o navegador
+
+### ⚠️ Importante: Limitação do localStorage
+
+Como o localStorage é **local ao navegador**, cada pessoa verá apenas as mensagens que ela mesma adicionou. Para ter um calendário **verdadeiramente colaborativo** (onde todos veem as mesmas mensagens), seria necessário:
+
+1. **Usar um backend** (Firebase, Supabase, etc.) - pode ter plano gratuito
+2. **Hospedar em plataforma que suporta armazenamento compartilhado**
+
+**Esta versão é perfeita para:**
+- ✅ Calendário pessoal
+- ✅ Diário individual
+- ✅ Planejamento pessoal
+- ✅ Demonstração do conceito
+
+**Para uso colaborativo real, considere:**
+- Integrar com Firebase Realtime Database (gratuito até 1GB)
+- Usar Supabase (tem plano gratuito)
+- Implementar backend próprio
 
 ### Estrutura dos Dados
 
