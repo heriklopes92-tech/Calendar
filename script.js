@@ -794,7 +794,7 @@ messageInput.addEventListener('keydown', (event) => {
 
 // Estilos para animações
 const style = document.createElement('style');
-style.textContent = `
+style.textContent = {`
     @keyframes slideIn {
         from { transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
@@ -804,7 +804,7 @@ style.textContent = `
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(100%); opacity: 0; }
     }
-`;
+`};
 document.head.appendChild(style);
 
 // Inicia quando a página carregar
