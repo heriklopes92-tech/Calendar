@@ -604,3 +604,13 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+//função para criar botao de excluir agendamento
+function removeMessage(year, month, day) {
+    const key = getDayKey(year, month, day);
+
+    if (calendarData[key]) {
+        delete calendarData[key];
+        saveCalendarData();
+        renderCalendar();
+    }
+}
