@@ -85,12 +85,22 @@ function waitForAuth() {
 /**
  * Configura o listener em tempo real do Firestore
  */
+// ============================================
+// FUNÇÕES DO FIRESTORE (VERSÃO CORRIGIDA)
+// ============================================
+
+/**
+ * Configura o listener em tempo real do Firestore
+ */
 function setupRealtimeListener() {
     try {
+        console.log('Configurando listener do Firestore...');
+        
         // Limpa dados locais
         calendarData = {};
         
         // Usa collection() do Firestore corretamente
+        // IMPORTANTE: window.firestore é um objeto que contém as funções, não tem método collection()
         const calendarRef = window.firestore.collection(window.db, 'calendar');
         
         // Escuta todas as mudanças na coleção 'calendar'
