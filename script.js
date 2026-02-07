@@ -1,448 +1,109 @@
 // ============================================
-// CONFIGURAÇÃO E VARIÁVEIS GLOBAIS
-// ============================================
-
-// Data atual do calendário (mês/ano sendo visualizado)
-let currentDate = new Date();
-
-// Armazena os dados do calendário em memória
-let calendarData = {};
-
-// ID do usuário
-let userId = null;
-
-// Modo de operação: 'firebase' ou 'local'
-let operationMode = 'local';
-
-// Referência do Firestore
-let unsubscribeListener = null;
-
-// Referências aos elementos DOM
-const calendarElement = document.getElementById('calendar');
-const currentMonthElement = document.getElementById('currentMonth');
-const prevMonthBtn = document.getElementById('prevMonth');
-const nextMonthBtn = document.getElementById('nextMonth');
-const modal = document.getElementById('modal');
-const modalDateElement = document.getElementById('modalDate');
-const messageInput = document.getElementById('messageInput');
-const saveMessageBtn = document.getElementById('saveMessage');
-const closeModal = document.querySelector('.close');
-const charCount = document.getElementById('charCount');
-const loadingOverlay = document.getElementById('loadingOverlay');
-
-// Variável para armazenar o dia selecionado
-let selectedDay = null;
-
-// ============================================
-// DETECÇÃO E FALLBACK DO FIREBASE
+// FUNÇÕES DE NAVEGAÇÃO E UTILITÁRIAS
 // ============================================
 
 /**
- * Verifica se o Firebase está disponível e funcionando (VERSÃO CORRIGIDA)
+ * Vai para o mês anterior
  */
-function checkFirebaseAvailability() {
-    try {
-        console.log('Verificando disponibilidade do Firebase...');
-        
-        // Verifica se as variáveis globais do Firebase existem
-        if (!window.firebaseDb) {
-            console.warn('Firebase não está disponível (firebaseDb é undefined)');
-            console.log('window.firebaseDb:', window.firebaseDb);
-            console.log('window.firestore:', window.firestore);
-            return false;
-        }
-        
-        // Verifica se temos as funções essenciais do Firestore
-        // As funções agora estão disponíveis globalmente via importação de módulos
-        const essentialFunctions = ['collection', 'doc', 'setDoc', 'getDoc', 'deleteDoc', 'onSnapshot'];
-        
-        for (const funcName of essentialFunctions) {
-            if (typeof window[funcName] !== 'function' && !window.firestore?.[funcName]) {
-                console.warn(`Função do Firestore ${funcName} não está disponível`);
-                return false;
-            }
-        }
-        
-        console.log('✅ Firebase está disponível e pronto para uso');
-        return true;
-    } catch (error) {
-        console.error('Erro ao verificar Firebase:', error);
-        return false;
-    }
+function previousMonth() {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+    corrigirMobileEmergencia(); // Aplica correções mobile
 }
 
 /**
- * Tenta inicializar o Firebase em modo degradado
+ * Vai para o próximo mês
  */
-async function initializeFirebaseWithFallback() {
-    console.log('Tentando inicializar Firebase com fallback...');
+function nextMonth() {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar();
+    corrigirMobileEmergencia(); // Aplica correções mobile
+}
+
+/**
+ * Mostra overlay de carregamento
+ */
+function showLoading() {
+    loadingOverlay.classList.add('active');
+}
+
+/**
+ * Esconde overlay de carregamento
+ */
+function hideLoading() {
+    loadingOverlay.classList.remove('active');
+}
+
+/**
+ * Atualiza contador de caracteres
+ */
+function updateCharCount() {
+    const length = messageInput.value.length;
+    charCount.textContent = length;
+    charCount.style.color = length > 200 ? 'red' : '#666';
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+// Configura os event listeners quando o DOM estiver pronto
+function setupEventListeners() {
+    console.log('Configurando event listeners...');
     
-    // Primeiro, tenta usar o Firebase normalmente
-    if (checkFirebaseAvailability()) {
-        try {
-            operationMode = 'firebase';
-            await setupFirebaseAuth();
-            setupFirestoreListener();
-            console.log('Firebase inicializado com sucesso no modo online');
-            return true;
-        } catch (error) {
-            console.warn('Falha ao inicializar Firebase, usando fallback local:', error);
-            operationMode = 'local';
-            return false;
-        }
+    // Verifica se os elementos existem antes de adicionar listeners
+    if (prevMonthBtn) {
+        prevMonthBtn.addEventListener('click', previousMonth);
+        console.log('✅ Listener para mês anterior configurado');
     } else {
-        console.warn('Firebase não disponível, usando modo local');
-        operationMode = 'local';
-        return false;
+        console.error('❌ Botão prevMonthBtn não encontrado');
     }
-}
-
-/**
- * Configura a autenticação do Firebase
- */
-async function setupFirebaseAuth() {
-    return new Promise((resolve, reject) => {
-        const maxAttempts = 30; // 3 segundos
-        let attempts = 0;
-        
-        const checkAuth = () => {
-            attempts++;
-            
-            if (window.userId) {
-                userId = window.userId;
-                console.log('Usuário autenticado no Firebase:', userId);
-                resolve();
-            } else if (attempts >= maxAttempts) {
-                reject(new Error('Timeout na autenticação do Firebase'));
-            } else {
-                setTimeout(checkAuth, 100);
+    
+    if (nextMonthBtn) {
+        nextMonthBtn.addEventListener('click', nextMonth);
+        console.log('✅ Listener para próximo mês configurado');
+    } else {
+        console.error('❌ Botão nextMonthBtn não encontrado');
+    }
+    
+    if (closeModal) {
+        closeModal.addEventListener('click', closeModalWindow);
+        console.log('✅ Listener para fechar modal configurado');
+    } else {
+        console.error('❌ Botão closeModal não encontrado');
+    }
+    
+    if (saveMessageBtn) {
+        saveMessageBtn.addEventListener('click', saveMessageHandler);
+        console.log('✅ Listener para salvar mensagem configurado');
+    } else {
+        console.error('❌ Botão saveMessageBtn não encontrado');
+    }
+    
+    // Adiciona listener para fechar modal ao clicar fora
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeModalWindow();
+        }
+    });
+    
+    if (messageInput) {
+        messageInput.addEventListener('input', updateCharCount);
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.ctrlKey && event.key === 'Enter') {
+                saveMessageHandler();
             }
-        };
-        
-        checkAuth();
+        });
+        console.log('✅ Listeners para input de mensagem configurados');
+    } else {
+        console.error('❌ Input messageInput não encontrado');
+    }
+    
+    // Adiciona listener para redimensionamento da janela
+    window.addEventListener('resize', function() {
+        setTimeout(corrigirMobileEmergencia, 300);
     });
 }
-
-/**
- * Configura o listener do Firestore (VERSÃO CORRIGIDA)
- */
-function setupFirestoreListener() {
-    try {
-        console.log('Configurando listener do Firestore...');
-        
-        // Obtém as referências corretas das funções do Firestore
-        // As funções agora podem estar disponíveis globalmente
-        const db = window.firebaseDb;
-        const firestoreFunctions = window.firestore || {};
-        
-        // Usa collection() corretamente
-        const calendarRef = window.collection 
-            ? window.collection(db, 'calendar')
-            : (firestoreFunctions.collection ? firestoreFunctions.collection(db, 'calendar') : null);
-        
-        if (!calendarRef) {
-            throw new Error('Função collection não disponível');
-        }
-        
-        // Configura o listener em tempo real usando onSnapshot
-        const onSnapshotFunc = window.onSnapshot || firestoreFunctions.onSnapshot;
-        
-        if (!onSnapshotFunc) {
-            throw new Error('Função onSnapshot não disponível');
-        }
-        
-        unsubscribeListener = onSnapshotFunc(
-            calendarRef,
-            (snapshot) => {
-                console.log('📊 Dados atualizados do Firestore:', snapshot.size, 'documentos');
-                
-                // Limpa dados anteriores
-                const newCalendarData = {};
-                
-                // Processa todos os documentos
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    newCalendarData[doc.id] = {
-                        message: data.message,
-                        timestamp: data.timestamp,
-                        userId: data.userId,
-                        edited: data.edited || false
-                    };
-                });
-                
-                // Atualiza o cache em memória
-                calendarData = newCalendarData;
-                
-                // Atualiza a interface
-                renderCalendar();
-                updateModeIndicator();
-                hideLoading();
-            },
-            (error) => {
-                console.error('❌ Erro no listener do Firestore:', error);
-                showWarning('Conexão com servidor perdida. Trabalhando em modo local.');
-                operationMode = 'local';
-                updateModeIndicator();
-            }
-        );
-        
-        console.log('✅ Listener do Firestore configurado com sucesso');
-        return true;
-    } catch (error) {
-        console.error('❌ Erro ao configurar listener do Firestore:', error);
-        operationMode = 'local';
-        showWarning('Erro na conexão com o servidor. Trabalhando em modo local.');
-        return false;
-    }
-}
-
-// ============================================
-// OPERAÇÕES DE DADOS (MODO ONLINE E OFFLINE)
-// ============================================
-
-/**
- * Salva uma mensagem (modo online ou offline)
- */
-async function saveMessage(year, month, day, message, isEdit = false) {
-    try {
-        showLoading();
-        
-        if (operationMode === 'firebase') {
-            // Modo online: salva no Firestore
-            const success = await saveMessageToFirestore(year, month, day, message, isEdit);
-            return success;
-        } else {
-            // Modo offline: salva no localStorage
-            const success = saveMessageToLocal(year, month, day, message, isEdit);
-            return success;
-        }
-    } catch (error) {
-        console.error('Erro ao salvar mensagem:', error);
-        alert(error.message || 'Erro ao salvar a mensagem. Por favor, tente novamente.');
-        return false;
-    } finally {
-        hideLoading();
-    }
-}
-
-/**
- * Salva uma mensagem no Firestore (VERSÃO CORRIGIDA)
- */
-async function saveMessageToFirestore(year, month, day, message, isEdit = false) {
-    const dayKey = getDayKey(year, month, day);
-    const timestamp = new Date().toISOString();
-    
-    const messageData = {
-        message: message.trim(),
-        timestamp: timestamp,
-        userId: userId,
-        edited: isEdit
-    };
-    
-    try {
-        // Obtém as funções do Firestore corretamente
-        const db = window.firebaseDb;
-        const docFunc = window.doc || (window.firestore && window.firestore.doc);
-        const setDocFunc = window.setDoc || (window.firestore && window.firestore.setDoc);
-        const getDocFunc = window.getDoc || (window.firestore && window.firestore.getDoc);
-        
-        if (!docFunc || !setDocFunc || !getDocFunc) {
-            throw new Error('Funções do Firestore não disponíveis');
-        }
-        
-        const docRef = docFunc(db, 'calendar', dayKey);
-        
-        if (isEdit) {
-            // Atualiza mensagem existente
-            await setDocFunc(docRef, messageData);
-            console.log('✅ Mensagem atualizada no Firestore:', dayKey);
-        } else {
-            // Verifica se já existe
-            const docSnap = await getDocFunc(docRef);
-            
-            if (docSnap.exists()) {
-                throw new Error('Este dia já foi preenchido por outro usuário!');
-            }
-            
-            // Cria nova mensagem
-            await setDocFunc(docRef, messageData);
-            console.log('✅ Mensagem salva no Firestore:', dayKey);
-        }
-        
-        return true;
-    } catch (error) {
-        console.error('❌ Erro ao salvar no Firestore:', error);
-        throw error;
-    }
-}
-
-/**
- * Salva uma mensagem no localStorage
- */
-function saveMessageToLocal(year, month, day, message, isEdit = false) {
-    const dayKey = getDayKey(year, month, day);
-    const timestamp = new Date().toISOString();
-    
-    // Se não tiver userId no modo local, cria um
-    if (!userId) {
-        userId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
-    
-    const messageData = {
-        message: message.trim(),
-        timestamp: timestamp,
-        userId: userId,
-        edited: isEdit
-    };
-    
-    try {
-        // Carrega dados existentes
-        let localData = {};
-        const savedData = localStorage.getItem('calendar-data');
-        if (savedData) {
-            localData = JSON.parse(savedData);
-        }
-        
-        // Verifica se já existe (apenas para novas mensagens)
-        if (!isEdit && localData[dayKey]) {
-            throw new Error('Este dia já foi preenchido!');
-        }
-        
-        // Atualiza os dados
-        localData[dayKey] = messageData;
-        
-        // Salva no localStorage
-        localStorage.setItem('calendar-data', JSON.stringify(localData));
-        
-        // Atualiza o cache em memória
-        calendarData[dayKey] = messageData;
-        
-        console.log('Mensagem salva localmente:', dayKey);
-        return true;
-    } catch (error) {
-        console.error('Erro ao salvar localmente:', error);
-        throw error;
-    }
-}
-
-/**
- * Remove uma mensagem
- */
-async function deleteMessage(year, month, day) {
-    try {
-        showLoading();
-        
-        const dayKey = getDayKey(year, month, day);
-        const messageData = calendarData[dayKey];
-        
-        if (!messageData) {
-            throw new Error('Mensagem não encontrada!');
-        }
-        
-        // Verifica se é o autor
-        if (messageData.userId !== userId) {
-            throw new Error('Você só pode excluir suas próprias mensagens!');
-        }
-        
-        // Confirma a exclusão
-        if (!confirm('Tem certeza que deseja excluir esta mensagem?')) {
-            hideLoading();
-            return false;
-        }
-        
-        if (operationMode === 'firebase') {
-            // Modo online: exclui do Firestore
-            const db = window.firebaseDb;
-            const docFunc = window.doc || (window.firestore && window.firestore.doc);
-            const deleteDocFunc = window.deleteDoc || (window.firestore && window.firestore.deleteDoc);
-            
-            if (!docFunc || !deleteDocFunc) {
-                throw new Error('Funções do Firestore não disponíveis');
-            }
-            
-            const docRef = docFunc(db, 'calendar', dayKey);
-            await deleteDocFunc(docRef);
-            console.log('Mensagem excluída do Firestore:', dayKey);
-        } else {
-            // Modo offline: exclui do localStorage
-            let localData = {};
-            const savedData = localStorage.getItem('calendar-data');
-            if (savedData) {
-                localData = JSON.parse(savedData);
-                delete localData[dayKey];
-                localStorage.setItem('calendar-data', JSON.stringify(localData));
-            }
-            
-            console.log('Mensagem excluída localmente:', dayKey);
-        }
-        
-        // Remove do cache em memória
-        delete calendarData[dayKey];
-        
-        // Atualiza a interface
-        renderCalendar();
-        return true;
-    } catch (error) {
-        console.error('Erro ao excluir mensagem:', error);
-        alert(error.message || 'Erro ao excluir a mensagem.');
-        return false;
-    } finally {
-        hideLoading();
-    }
-}
-
-/**
- * Carrega dados salvos
- */
-function loadSavedData() {
-    try {
-        // Primeiro tenta carregar do cache em memória (se já tiver dados do Firestore)
-        if (Object.keys(calendarData).length > 0) {
-            console.log('Usando dados do cache em memória');
-            return;
-        }
-        
-        // Se não tiver dados no cache, carrega do localStorage
-        const savedData = localStorage.getItem('calendar-data');
-        if (savedData) {
-            const parsedData = JSON.parse(savedData);
-            
-            // Copia para o cache em memória
-            Object.keys(parsedData).forEach(key => {
-                calendarData[key] = parsedData[key];
-            });
-            
-            console.log('Dados carregados do localStorage:', Object.keys(calendarData).length, 'entradas');
-        } else {
-            console.log('Nenhum dado salvo encontrado');
-        }
-    } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        calendarData = {};
-    }
-}
-
-// ============================================
-// FUNÇÕES UTILITÁRIAS (RESTANTE DO CÓDIGO MANTIDO IGUAL)
-// ============================================
-
-/**
- * Gera uma chave única para cada dia (formato: YYYY-MM-DD)
- */
-function getDayKey(year, month, day) {
-    const date = new Date(year, month, day);
-    return date.toISOString().split('T')[0];
-}
-
-/**
- * Verifica se um dia tem mensagem
- */
-function hasMessage(year, month, day) {
-    const key = getDayKey(year, month, day);
-    return calendarData[key] !== undefined;
-}
-
-// ... (O restante do código permanece igual) ...
 
 // ============================================
 // INICIALIZAÇÃO
@@ -453,6 +114,9 @@ async function init() {
     showLoading();
     
     try {
+        // Configura os event listeners primeiro
+        setupEventListeners();
+        
         // Tenta inicializar o Firebase
         const firebaseSuccess = await initializeFirebaseWithFallback();
         
@@ -472,6 +136,10 @@ async function init() {
         renderCalendar();
         updateModeIndicator();
         
+        // Aplica correções para mobile
+        setTimeout(corrigirMobileEmergencia, 100);
+        setTimeout(corrigirMobileEmergencia, 500);
+        
         console.log('Calendário pronto! Modo:', operationMode);
     } catch (error) {
         console.error('Erro na inicialização:', error);
@@ -486,28 +154,10 @@ async function init() {
 }
 
 // ============================================
-// EVENT LISTENERS
+// CONFIGURAÇÃO INICIAL
 // ============================================
 
-prevMonthBtn.addEventListener('click', previousMonth);
-nextMonthBtn.addEventListener('click', nextMonth);
-closeModal.addEventListener('click', closeModalWindow);
-saveMessageBtn.addEventListener('click', saveMessageHandler);
-
-window.addEventListener('click', (event) => {
-    if (event.target === modal) {
-        closeModalWindow();
-    }
-});
-
-messageInput.addEventListener('input', updateCharCount);
-messageInput.addEventListener('keydown', (event) => {
-    if (event.ctrlKey && event.key === 'Enter') {
-        saveMessageHandler();
-    }
-});
-
-// Estilos para animações
+// Adiciona estilos CSS para animações
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideIn {
@@ -524,7 +174,82 @@ document.head.appendChild(style);
 
 // Inicia quando a página carregar
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM completamente carregado - Iniciando aplicação');
+        init();
+        
+        // Configura correções mobile
+        monitorarEMobile();
+    });
 } else {
+    // Se o DOM já estiver carregado
+    console.log('DOM já carregado - Iniciando aplicação');
     init();
+    monitorarEMobile();
 }
+
+// ============================================
+// FUNÇÃO DE TESTE PARA O CONSOLE
+// ============================================
+
+window.testeMobile = function() {
+    console.log('🧪 Testando visibilidade mobile...');
+    console.log(`Largura: ${window.innerWidth}px`);
+    
+    const numeros = document.querySelectorAll('.day-number');
+    const mensagens = document.querySelectorAll('.day-message');
+    const celulas = document.querySelectorAll('.day-cell');
+    
+    console.log(`✅ ${numeros.length} números de dias`);
+    console.log(`✅ ${mensagens.length} mensagens`);
+    console.log(`✅ ${celulas.length} células`);
+    
+    // Testa se estão visíveis
+    numeros.forEach((num, i) => {
+        const estilo = window.getComputedStyle(num);
+        if (estilo.display === 'none' || estilo.visibility === 'hidden' || estilo.opacity === '0') {
+            console.warn(`⚠️ Número ${i+1} NÃO está visível!`);
+            console.warn(`   display: ${estilo.display}, visibility: ${estilo.visibility}, opacity: ${estilo.opacity}`);
+        }
+    });
+    
+    // Aplica correção de emergência
+    corrigirMobileEmergencia();
+    console.log('✅ Teste completo - Correções aplicadas');
+};
+
+// Comando rápido para forçar correção
+window.arrumarMobile = function() {
+    console.log('🔨 Forçando correção mobile...');
+    corrigirMobileEmergencia();
+    alert('Correção mobile aplicada! Verifique se as datas estão visíveis.');
+};
+
+// Comando para verificar listeners
+window.verificarListeners = function() {
+    console.log('🔍 Verificando event listeners...');
+    console.log('prevMonthBtn listeners:', prevMonthBtn ? getEventListeners(prevMonthBtn) : 'Não encontrado');
+    console.log('nextMonthBtn listeners:', nextMonthBtn ? getEventListeners(nextMonthBtn) : 'Não encontrado');
+    
+    // Função auxiliar para obter listeners
+    function getEventListeners(element) {
+        const listeners = [];
+        const types = ['click', 'mouseover', 'mouseout', 'keydown', 'keyup'];
+        
+        types.forEach(type => {
+            const listener = element[`on${type}`];
+            if (listener) {
+                listeners.push(`${type}: ${listener.toString()}`);
+            }
+        });
+        
+        return listeners.length > 0 ? listeners : 'Nenhum listener direto encontrado';
+    }
+};
+
+// Comando para forçar renderização
+window.recarregarCalendario = function() {
+    console.log('🔄 Recarregando calendário...');
+    renderCalendar();
+    corrigirMobileEmergencia();
+};
