@@ -12,7 +12,7 @@ let calendarData = {};
 let userId = null;
 
 // Referência do Firestore
-let calendarCollection = null;
+let unsubscribeListener = null;
 
 // Referências aos elementos DOM
 const calendarElement = document.getElementById('calendar');
@@ -35,77 +35,108 @@ let selectedDay = null;
 // ============================================
 
 /**
- * Inicializa o Firestore
+ * Inicializa o Firebase e configura o listener
  */
 async function initFirebase() {
     try {
-        // Aguarda o login anônimo ser concluído
-        await new Promise((resolve) => {
-            const checkAuth = () => {
-                if (window.userId) {
-                    userId = window.userId;
-                    resolve();
-                } else {
-                    setTimeout(checkAuth, 100);
-                }
-            };
-            checkAuth();
-        });
-
-        // Configura a coleção do Firestore
-        calendarCollection = window.db.collection('calendar');
+        console.log('Iniciando Firebase...');
         
-        // Configura o listener em tempo real
+        // Aguarda o login anônimo
+        await waitForAuth();
+        
+        // Configura listener em tempo real
         setupRealtimeListener();
         
-        console.log('Firestore inicializado com sucesso!');
+        console.log('Firebase inicializado com sucesso!');
         return true;
     } catch (error) {
         console.error('Erro ao inicializar Firebase:', error);
-        showError('Erro ao conectar com o servidor. Usando modo offline.');
+        showError('Erro ao conectar com o servidor.');
         return false;
     }
+}
+
+/**
+ * Aguarda o login anônimo ser concluído
+ */
+function waitForAuth() {
+    return new Promise((resolve, reject) => {
+        const maxAttempts = 50; // 5 segundos máximo
+        let attempts = 0;
+        
+        const checkAuth = () => {
+            attempts++;
+            
+            if (window.userId) {
+                userId = window.userId;
+                console.log('Usuário autenticado:', userId);
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                reject(new Error('Timeout ao aguardar autenticação'));
+            } else {
+                setTimeout(checkAuth, 100);
+            }
+        };
+        
+        checkAuth();
+    });
 }
 
 /**
  * Configura o listener em tempo real do Firestore
  */
 function setupRealtimeListener() {
-    // Limpa dados locais
-    calendarData = {};
-    
-    // Escuta todas as mudanças na coleção 'calendar'
-    window.firestore.onSnapshot(
-        window.firestore.collection(window.db, 'calendar'),
-        (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                const data = change.doc.data();
-                const dayKey = change.doc.id;
+    try {
+        // Limpa dados locais
+        calendarData = {};
+        
+        // Usa collection() do Firestore corretamente
+        const calendarRef = window.firestore.collection(window.db, 'calendar');
+        
+        // Escuta todas as mudanças na coleção 'calendar'
+        unsubscribeListener = window.firestore.onSnapshot(
+            calendarRef,
+            (snapshot) => {
+                console.log('Dados recebidos do Firestore:', snapshot.docs.length, 'documentos');
                 
-                if (change.type === 'added' || change.type === 'modified') {
-                    // Adiciona ou atualiza no cache local
-                    calendarData[dayKey] = {
-                        message: data.message,
-                        timestamp: data.timestamp,
-                        userId: data.userId,
-                        edited: data.edited || false
-                    };
-                } else if (change.type === 'removed') {
-                    // Remove do cache local
-                    delete calendarData[dayKey];
-                }
-            });
-            
-            // Renderiza o calendário com os novos dados
-            renderCalendar();
-            hideLoading();
-        },
-        (error) => {
-            console.error('Erro no listener do Firestore:', error);
-            showError('Erro na conexão em tempo real.');
-            hideLoading();
-        }
-    );
+                snapshot.docChanges().forEach((change) => {
+                    const data = change.doc.data();
+                    const dayKey = change.doc.id;
+                    
+                    console.log('Mudança detectada:', change.type, 'para', dayKey, data);
+                    
+                    if (change.type === 'added' || change.type === 'modified') {
+                        // Adiciona ou atualiza no cache local
+                        calendarData[dayKey] = {
+                            message: data.message,
+                            timestamp: data.timestamp,
+                            userId: data.userId,
+                            edited: data.edited || false
+                        };
+                    } else if (change.type === 'removed') {
+                        // Remove do cache local
+                        delete calendarData[dayKey];
+                    }
+                });
+                
+                // Renderiza o calendário com os novos dados
+                renderCalendar();
+                hideLoading();
+            },
+            (error) => {
+                console.error('Erro no listener do Firestore:', error);
+                showError('Erro na conexão em tempo real.');
+                hideLoading();
+            }
+        );
+        
+        console.log('Listener do Firestore configurado');
+        return true;
+    } catch (error) {
+        console.error('Erro ao configurar listener:', error);
+        showError('Erro ao configurar conexão em tempo real.');
+        return false;
+    }
 }
 
 /**
@@ -125,22 +156,21 @@ async function saveMessageToFirestore(year, month, day, message, isEdit = false)
             edited: isEdit
         };
         
+        const docRef = window.firestore.doc(window.db, 'calendar', dayKey);
+        
         if (isEdit) {
             // Atualiza mensagem existente
-            await window.firestore.setDoc(
-                window.firestore.doc(window.db, 'calendar', dayKey),
-                messageData
-            );
+            await window.firestore.setDoc(docRef, messageData);
             console.log('Mensagem atualizada no Firestore:', dayKey);
         } else {
-            // Cria nova mensagem (Firestore não permite sobrescrever se já existir)
-            const docRef = window.firestore.doc(window.db, 'calendar', dayKey);
+            // Verifica se já existe
             const docSnap = await window.firestore.getDoc(docRef);
             
             if (docSnap.exists()) {
                 throw new Error('Este dia já foi preenchido por outro usuário!');
             }
             
+            // Cria nova mensagem
             await window.firestore.setDoc(docRef, messageData);
             console.log('Mensagem salva no Firestore:', dayKey);
         }
@@ -492,7 +522,11 @@ function hideLoading() {
 
 function showError(message) {
     console.error(message);
-    // Pode implementar uma notificação mais amigável aqui
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'position:fixed;top:10px;right:10px;background:#f44336;color:white;padding:10px;border-radius:5px;z-index:10000;';
+    errorDiv.textContent = message;
+    document.body.appendChild(errorDiv);
+    setTimeout(() => errorDiv.remove(), 5000);
 }
 
 function updateCharCount() {
@@ -542,7 +576,7 @@ async function init() {
         console.log('Calendário pronto para uso colaborativo!');
     } catch (error) {
         console.error('Erro na inicialização:', error);
-        showError('Erro ao inicializar o aplicativo.');
+        showError('Erro ao inicializar o aplicativo. Verifique sua conexão.');
         hideLoading();
     }
 }
