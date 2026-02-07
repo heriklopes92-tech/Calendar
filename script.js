@@ -5,6 +5,7 @@
 // Data atual do calendário (mês/ano sendo visualizado)
 let currentDate = new Date();
 
+
 // Armazena os dados do calendário em memória
 let calendarData = {};
 
@@ -94,7 +95,8 @@ function saveCalendarData() {
  * Gera uma chave única para cada dia (formato: YYYY-MM-DD)
  */
 function getDayKey(year, month, day) {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const date = new Date(year, month, day);
+    return date.toISOString().split('T')[0];
 }
 
 /**
