@@ -38,15 +38,17 @@ let selectedDay = null;
 // ============================================
 
 /**
- * Verifica se o Firebase está disponível e funcionando
+ * Verifica se o Firebase está disponível e funcionando (VERSÃO CORRIGIDA)
  */
 function checkFirebaseAvailability() {
     try {
         console.log('Verificando disponibilidade do Firebase...');
         
         // Verifica se as variáveis globais do Firebase existem
-        if (!window.db || !window.firestore) {
-            console.warn('Firebase não está disponível (window.db ou window.firestore são undefined)');
+        if (!window.firebaseDb || !window.firestore) {
+            console.warn('Firebase não está disponível (firebaseDb ou firestore são undefined)');
+            console.log('window.firebaseDb:', window.firebaseDb);
+            console.log('window.firestore:', window.firestore);
             return false;
         }
         
@@ -56,11 +58,13 @@ function checkFirebaseAvailability() {
         for (const funcName of essentialFunctions) {
             if (typeof window.firestore[funcName] !== 'function') {
                 console.warn(`Função do Firestore ${funcName} não está disponível`);
+                console.log(`window.firestore.${funcName}:`, window.firestore[funcName]);
                 return false;
             }
         }
         
-        console.log('Firebase está disponível e pronto para uso');
+        console.log('✅ Firebase está disponível e pronto para uso');
+        console.log('Funções disponíveis:', Object.keys(window.firestore));
         return true;
     } catch (error) {
         console.error('Erro ao verificar Firebase:', error);
@@ -123,26 +127,29 @@ async function setupFirebaseAuth() {
 /**
  * Configura o listener do Firestore (modo online)
  */
+/**
+ * Configura o listener do Firestore (VERSÃO CORRIGIDA)
+ */
 function setupFirestoreListener() {
     try {
         console.log('Configurando listener do Firestore...');
         
-        const { collection, onSnapshot } = window.firestore;
-        const db = window.db;
-        
-        // Referência à coleção 'calendar'
-        const calendarRef = collection(db, 'calendar');
+        // Usa as funções do Firestore corretamente
+        const calendarRef = window.firestore.collection(window.firebaseDb, 'calendar');
         
         // Configura o listener em tempo real
-        unsubscribeListener = onSnapshot(
+        unsubscribeListener = window.firestore.onSnapshot(
             calendarRef,
             (snapshot) => {
-                console.log('Dados atualizados do Firestore:', snapshot.size, 'documentos');
+                console.log('📊 Dados atualizados do Firestore:', snapshot.size, 'documentos');
+                
+                // Limpa dados anteriores
+                const newCalendarData = {};
                 
                 // Processa todos os documentos
                 snapshot.forEach((doc) => {
                     const data = doc.data();
-                    calendarData[doc.id] = {
+                    newCalendarData[doc.id] = {
                         message: data.message,
                         timestamp: data.timestamp,
                         userId: data.userId,
@@ -150,26 +157,30 @@ function setupFirestoreListener() {
                     };
                 });
                 
+                // Atualiza o cache em memória
+                calendarData = newCalendarData;
+                
                 // Atualiza a interface
                 renderCalendar();
                 updateModeIndicator();
                 hideLoading();
             },
             (error) => {
-                console.error('Erro no listener do Firestore:', error);
+                console.error('❌ Erro no listener do Firestore:', error);
                 showWarning('Conexão com servidor perdida. Trabalhando em modo local.');
                 operationMode = 'local';
                 updateModeIndicator();
             }
         );
         
-        console.log('Listener do Firestore configurado com sucesso');
+        console.log('✅ Listener do Firestore configurado com sucesso');
         return true;
     } catch (error) {
-        console.error('Erro ao configurar listener do Firestore:', error);
+        console.error('❌ Erro ao configurar listener do Firestore:', error);
         throw error;
     }
 }
+
 
 // ============================================
 // OPERAÇÕES DE DADOS (MODO ONLINE E OFFLINE)
@@ -201,7 +212,7 @@ async function saveMessage(year, month, day, message, isEdit = false) {
 }
 
 /**
- * Salva uma mensagem no Firestore
+ * Salva uma mensagem no Firestore (VERSÃO CORRIGIDA)
  */
 async function saveMessageToFirestore(year, month, day, message, isEdit = false) {
     const dayKey = getDayKey(year, month, day);
@@ -215,31 +226,28 @@ async function saveMessageToFirestore(year, month, day, message, isEdit = false)
     };
     
     try {
-        const { doc, setDoc, getDoc } = window.firestore;
-        const db = window.db;
-        
-        const docRef = doc(db, 'calendar', dayKey);
+        const docRef = window.firestore.doc(window.firebaseDb, 'calendar', dayKey);
         
         if (isEdit) {
             // Atualiza mensagem existente
-            await setDoc(docRef, messageData);
-            console.log('Mensagem atualizada no Firestore:', dayKey);
+            await window.firestore.setDoc(docRef, messageData);
+            console.log('✅ Mensagem atualizada no Firestore:', dayKey);
         } else {
             // Verifica se já existe
-            const docSnap = await getDoc(docRef);
+            const docSnap = await window.firestore.getDoc(docRef);
             
             if (docSnap.exists()) {
                 throw new Error('Este dia já foi preenchido por outro usuário!');
             }
             
             // Cria nova mensagem
-            await setDoc(docRef, messageData);
-            console.log('Mensagem salva no Firestore:', dayKey);
+            await window.firestore.setDoc(docRef, messageData);
+            console.log('✅ Mensagem salva no Firestore:', dayKey);
         }
         
         return true;
     } catch (error) {
-        console.error('Erro ao salvar no Firestore:', error);
+        console.error('❌ Erro ao salvar no Firestore:', error);
         throw error;
     }
 }
