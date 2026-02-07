@@ -63,21 +63,20 @@
     </div>
 <!-- Firebase -->
 <script type="module">
-  // Core
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-analytics.js";
-
-  // Auth
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-
-  // Firestore
-  import {
+  
+  // Firestore - IMPORTANTE: importe desta forma
+  import { 
     getFirestore,
+    collection,
     doc,
     setDoc,
     getDoc,
     deleteDoc,
-    onSnapshot
+    onSnapshot,
+    updateDoc
   } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -98,7 +97,7 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // Login anônimo (OBRIGATÓRIO)
+  // Login anônimo
   signInAnonymously(auth)
     .then((cred) => {
       window.userId = cred.user.uid;
@@ -108,9 +107,29 @@
       console.error("Erro no login anônimo:", error);
     });
 
-  // Disponibiliza globalmente (para seu calendário)
+  // Disponibiliza GLOBALMENTE de forma CORRETA
+  window.firebaseApp = app;
+  window.firebaseAuth = auth;
+  window.firebaseDb = db;  // Firestore database instance
+  window.firebaseAnalytics = analytics;
+  
+  // Disponibiliza as funções do Firestore individualmente
+  window.firebaseFirestore = {
+    collection: (dbRef, path) => collection(dbRef, path),
+    doc: (dbRef, path, ...pathSegments) => doc(dbRef, path, ...pathSegments),
+    setDoc,
+    getDoc,
+    deleteDoc,
+    onSnapshot,
+    updateDoc
+  };
+  
+  // Para compatibilidade com código existente
   window.db = db;
-  window.firestore = { doc, setDoc, getDoc, deleteDoc, onSnapshot };
+  window.firestore = window.firebaseFirestore;
+  
+  console.log("Firebase inicializado com sucesso!");
+  console.log("Firestore disponível:", Object.keys(window.firestore));
 </script>
     
     <script src="script.js"></script>
